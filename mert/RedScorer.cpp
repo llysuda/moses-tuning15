@@ -38,7 +38,7 @@ RedScorer::RedScorer(const string& config)
     //return;
   }
 
-  m_type = getConfig("type","score");
+  m_type = getConfig("type","stat");
 
   m_weights.push_back(0.6); // unigram fmean
   m_weights.push_back(0.5); // bigram fmean

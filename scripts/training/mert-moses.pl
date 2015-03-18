@@ -167,7 +167,7 @@ my $dev_symal_abs = undef;
 my $working_dir_abs = undef;
 
 my $refdep = "";
-my $redType = "score";
+my $redType = "stat";
 
 use Getopt::Long;
 GetOptions(
