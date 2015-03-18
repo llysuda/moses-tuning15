@@ -186,7 +186,7 @@ private:
 class Vertex
 {
 public:
-  Vertex() : sourceCovered_(0) {}
+  Vertex() : sourceCovered_(0), startPos(0), endPos(0) {}
 
   void AddEdge(const Edge* edge) {
     incoming_.push_back(edge);
@@ -194,6 +194,11 @@ public:
 
   void SetSourceCovered(size_t sourceCovered) {
     sourceCovered_ = sourceCovered;
+  }
+
+  void SetStartEndPos(size_t start, size_t end) {
+    startPos = start;
+    endPos = end;
   }
 
   const std::vector<const Edge*>& GetIncoming() const {
@@ -207,6 +212,10 @@ public:
 private:
   std::vector<const Edge*> incoming_;
   size_t sourceCovered_;
+
+public:
+  size_t startPos;
+  size_t endPos;
 };
 
 

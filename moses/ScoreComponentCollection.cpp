@@ -189,8 +189,15 @@ void ScoreComponentCollection::Save(ostream& out, bool multiline) const
     sep = "=";
     linesep = " ";
   }
+
+  const StaticData& staticData = StaticData::Instance();
+  bool onlyTunable = staticData.GetOnlyTunable();
   ScoreIndexMap::const_iterator iter = s_scoreIndexes.begin();
   for (; iter != s_scoreIndexes.end(); ++iter ) {
+
+    if (onlyTunable && !iter->first->IsTuneable())
+      continue;
+
     string name = iter->first->GetScoreProducerDescription();
     IndexPair ip = iter->second; // feature indices
     if (ip.second-ip.first == 1) {

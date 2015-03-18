@@ -97,7 +97,13 @@ HypergraphOutput<M>::HypergraphOutput(size_t precision) :
       //
       // If this line gives you compile errors,
       //   contact Lane Schwartz on the Moses mailing list
-      m_hypergraphDir = nbestPath.parent_path().string();
+      if (nbestPath.has_parent_path())
+        m_hypergraphDir = nbestPath.parent_path().string();
+      else {
+        stringstream hypergraphDirName;
+        hypergraphDirName << boost::filesystem::current_path().string() << "/hypergraph";
+        m_hypergraphDir = hypergraphDirName.str();
+      }
 
     } else {
       stringstream hypergraphDirName;
@@ -224,6 +230,9 @@ void ChartSearchGraphWriterHypergraph::WriteHypos(const ChartHypothesisCollectio
       }
     }
     (*m_out) << edges.size() << endl;
+    (*m_out) << mainHypo->GetCurrSourceRange().GetStartPos() << endl;
+    (*m_out) << mainHypo->GetCurrSourceRange().GetEndPos() << endl;
+
     for (vector<const ChartHypothesis*>::const_iterator ei = edges.begin(); ei != edges.end(); ++ei) {
       const ChartHypothesis* hypo = *ei;
       const TargetPhrase& target = hypo->GetCurrTargetPhrase();

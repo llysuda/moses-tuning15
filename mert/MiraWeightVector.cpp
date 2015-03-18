@@ -102,6 +102,30 @@ void MiraWeightVector::ToSparse(SparseVector* sparse) const
   }
 }
 
+void MiraWeightVector::ToSparse(SparseVector* sparse, size_t denseSize) const
+{
+  for (size_t i = 0; i < m_weights.size(); ++i) {
+    if (i < denseSize) {
+      sparse->set(i,m_weights[i]);
+    } else {
+      if(abs(m_weights[i])>1e-8) {
+        sparse->set(i-denseSize,m_weights[i]);
+      }
+    }
+  }
+}
+
+/*void MiraWeightVector::ToSparseFull(SparseVector* sparse, size_t denseSize) const
+{
+  for (size_t i = 0; i < m_weights.size(); ++i) {
+    if (i < denseSize) {
+      sparse->set(i,m_weights[i]);
+    } else {
+       sparse->set(i-denseSize,m_weights[i]);
+    }
+  }
+}*/
+
 /**
  * Make sure everyone's total is up-to-date
  */
@@ -132,7 +156,7 @@ ValType MiraWeightVector::sqrNorm() const
 }
 
 AvgWeightVector::AvgWeightVector(const MiraWeightVector& wv)
-  :m_wv(wv)
+  :m_wv(wv), noavg(false)
 {}
 
 ostream& operator<<(ostream& o, const MiraWeightVector& e)
@@ -148,7 +172,7 @@ ostream& operator<<(ostream& o, const MiraWeightVector& e)
 
 ValType AvgWeightVector::weight(size_t index) const
 {
-  if(m_wv.m_numUpdates==0) return m_wv.weight(index);
+  if(m_wv.m_numUpdates==0 || noavg) return m_wv.weight(index);
   else {
     if(index < m_wv.m_totals.size()) {
       return m_wv.m_totals[index] / m_wv.m_numUpdates;
@@ -178,6 +202,20 @@ void AvgWeightVector::ToSparse(SparseVector* sparse) const
     ValType w = weight(i);
     if(abs(w)>1e-8) {
       sparse->set(i,w);
+    }
+  }
+}
+
+void AvgWeightVector::ToSparse(SparseVector* sparse, size_t denseSize) const
+{
+  for (size_t i = 0; i < size(); ++i) {
+    ValType w = weight(i);
+    if (i < denseSize) {
+      sparse->set(i,w);
+    } else {
+      if(abs(w)>1e-8) {
+        sparse->set(i-denseSize,w);
+      }
     }
   }
 }

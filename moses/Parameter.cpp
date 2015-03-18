@@ -215,6 +215,9 @@ Parameter::Parameter()
   AddParam("spe-src", "Simulated post-editing. Source filename");
   AddParam("spe-trg", "Simulated post-editing. Target filename");
   AddParam("spe-aln", "Simulated post-editing. Alignment filename");
+
+  AddParam("reachable-span-pair", "wether output all reachable span pair. need to combine with ConstrainedDecoding, min souce span 5");
+  AddParam("only-tunable", "only output tunable features");
 }
 
 Parameter::~Parameter()
