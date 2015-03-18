@@ -132,17 +132,17 @@ float RedScorer::calculateScore(const vector<ScoreStatsType>& comps) const
     }
     //bigram
     float bfmean = 0.0;
-    if (comps[7]> 0) {
-      float bprec = comps[5]/comps[7];
-      float brecall = comps[6]/comps[7];
+    if (comps[6] > 0 && comps[7]> 0) {
+      float bprec = comps[5]/comps[6];
+      float brecall = comps[5]/comps[7];
       if (bprec > 0 && brecall > 0)
         bfmean = bprec*brecall/(m_weights[3]*bprec+(1-m_weights[3])*brecall);
     }
     //trigram
     float tfmean = 0.0;
-    if (comps[10] > 0) {
-      float tprec = comps[8]/comps[10];
-      float trecall = comps[9]/comps[10];
+    if (comps[9] > 0 && comps[10] > 0) {
+      float tprec = comps[8]/comps[9];
+      float trecall = comps[8]/comps[10];
       if (tprec > 0 && trecall > 0)
         tfmean = tprec*trecall/(m_weights[3]*tprec+(1-m_weights[3])*trecall);
     }
