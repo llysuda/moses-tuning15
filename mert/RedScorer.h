@@ -62,6 +62,8 @@ private:
   std::vector<std::vector<std::string> > m_stats;
   int m_currIndex;
   int m_prevSid;
+  std::string m_type;
+  std::vector<float> m_weights;
 
   // data extracted from reference files
   std::vector<std::string> m_references;

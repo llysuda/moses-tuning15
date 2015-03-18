@@ -33,10 +33,17 @@ RedScorer::RedScorer(const string& config)
 
   stat_file = getConfig("stat", "");
   if (stat_file == "") {
-    //throw runtime_error("stat file is required: --scconfig stat:stat_file");
-    cerr << "no stat file specified" << endl;
-    return;
+    throw runtime_error("stat file is required: --scconfig stat:stat_file");
+    //cerr << "no stat file specified" << endl;
+    //return;
   }
+
+  m_type = getConfig("type","score");
+
+  m_weights.push_back(0.6); // unigram fmean
+  m_weights.push_back(0.5); // bigram fmean
+  m_weights.push_back(0.1); // trigram fmean
+  m_weights.push_back(0.9); // prec weight
 
   TRACE_ERR("loading nbest stats from " << stat_file << endl);
   util::FilePiece in(stat_file.c_str());
@@ -113,7 +120,37 @@ float RedScorer::calculateScore(const vector<ScoreStatsType>& comps) const
   if (comps.size() != NumberOfScores()) {
     throw runtime_error("RED stats num mis-match !");
   }
-  ScoreStatsType score = comps[2]/comps[1];
+  ScoreStatsType score = 0.0;
+  if (m_type == "stat") {
+    // unigram
+    float ufmean = 0.0;
+    if (comps[2] > 0 && comps[4] > 0) {
+      float uprec = comps[1]/comps[2];
+      float urecall = comps[3]/comps[4];
+      if (uprec > 0 && urecall > 0)
+        ufmean = uprec*urecall/(m_weights[3]*uprec+(1-m_weights[3])*urecall);
+    }
+    //bigram
+    float bfmean = 0.0;
+    if (comps[7]> 0) {
+      float bprec = comps[5]/comps[7];
+      float brecall = comps[6]/comps[7];
+      if (bprec > 0 && brecall > 0)
+        bfmean = bprec*brecall/(m_weights[3]*bprec+(1-m_weights[3])*brecall);
+    }
+    //trigram
+    float tfmean = 0.0;
+    if (comps[10] > 0) {
+      float tprec = comps[8]/comps[10];
+      float trecall = comps[9]/comps[10];
+      if (tprec > 0 && trecall > 0)
+        tfmean = tprec*trecall/(m_weights[3]*tprec+(1-m_weights[3])*trecall);
+    }
+
+    score = m_weights[0] * ufmean + m_weights[1] * bfmean + m_weights[2] * tfmean;
+  } else {
+    score = comps[2]/comps[1];
+  }
   return score;
 }
 

@@ -428,7 +428,10 @@ $scconfig =~ s/\s+/,/g;
 $scconfig = "--scconfig $scconfig" if ($scconfig);
 
 if ($sctype =~ /RED/) {
-    $scconfig .= ",stat:red/red.nbest.stat" ;
+    $scconfig .= ",stat:red/red.nbest.stat,type:$redType" ;
+    if (defined $batch_mira_args && $scconfig) {
+        $batch_mira_args .= " $scconfig";
+    }
 }
 
 my $mert_extract_args = "$sctype $scconfig";
