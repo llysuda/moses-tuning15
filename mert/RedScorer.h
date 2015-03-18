@@ -47,7 +47,7 @@ public:
 
   virtual std::size_t NumberOfScores() const {
     // reflen count totalScore
-    return 3;
+    return 11;
   }
 
   virtual float getReferenceLength(const std::vector<ScoreStatsType>& totals) const {

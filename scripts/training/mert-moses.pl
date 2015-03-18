@@ -167,6 +167,7 @@ my $dev_symal_abs = undef;
 my $working_dir_abs = undef;
 
 my $refdep = "";
+my $redType = "score";
 
 use Getopt::Long;
 GetOptions(
@@ -223,7 +224,8 @@ GetOptions(
   "promix-table=s" => \@__PROMIX_TABLES,
   "threads=i" => \$__THREADS,
   "spe-symal=s" => \$___DEV_SYMAL,
-  "red-ref-dep=s" => \$refdep
+  "red-ref-dep=s" => \$refdep,
+  "red-type=s" => \$redType
 ) or exit(1);
 
 # the 4 required parameters can be supplied on the command line directly
@@ -835,7 +837,7 @@ while (1) {
         if($__THREADS) {
             $num_threads = $__THREADS;
         }
-        $cmd = "bash ~/plateform/red/red-parallel.sh $nbest_file $___DEV_E $refdep $num_threads\n";
+        $cmd = "bash ~/plateform/red/red-parallel.sh $nbest_file $___DEV_E $refdep $num_threads $redType\n";
     }
     
     $cmd .= "$mert_extract_cmd $mert_extract_args --scfile $score_file --ffile $feature_file -r " . join(",", @references) . " -n $nbest_file";
