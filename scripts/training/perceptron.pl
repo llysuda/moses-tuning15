@@ -166,7 +166,12 @@ my $___DEV_SYMAL = undef;
 my $dev_symal_abs = undef;
 my $working_dir_abs = undef;
 
-my $refdep = "";
+my $normalize = 1;
+my $ONLINE = 0;
+my $MOSES_ARGS = undef;
+my $hypergraph_dir_ref = "";
+
+my $MAXVIO = 0;
 
 use Getopt::Long;
 GetOptions(
@@ -216,14 +221,17 @@ GetOptions(
   "pairwise-ranked" => \$___PAIRWISE_RANKED_OPTIMIZER,
   "pro-starting-point" => \$___PRO_STARTING_POINT,
   "historic-interpolation=f" => \$___HISTORIC_INTERPOLATION,
-  "batch-mira" => \$___BATCH_MIRA,
-  "hg-mira" => \$___HG_MIRA,
-  "batch-mira-args=s" => \$batch_mira_args,
+  "batch-perceptron" => \$___BATCH_MIRA,
+  "hg-perceptron" => \$___HG_MIRA,
+  "perceptron-args=s" => \$batch_mira_args,
   "promix-training=s" => \$__PROMIX_TRAINING,
   "promix-table=s" => \@__PROMIX_TABLES,
   "threads=i" => \$__THREADS,
   "spe-symal=s" => \$___DEV_SYMAL,
-  "red-ref-dep=s" => \$refdep
+  "norm!" => \$normalize,
+  "online" => \$ONLINE,
+  "maxvio" => \$MAXVIO,
+  "hg-dir-ref=s" => \$hypergraph_dir_ref
 ) or exit(1);
 
 # the 4 required parameters can be supplied on the command line directly
@@ -324,7 +332,6 @@ Options:
   exit 1;
 }
 
-$refdep = ensure_full_path($refdep);
 
 # Check validity of input parameters and set defaults if needed
 
@@ -355,7 +362,10 @@ if (!defined $mertdir) {
 my $mert_extract_cmd = File::Spec->catfile($mertdir, "extractor");
 my $mert_mert_cmd    = File::Spec->catfile($mertdir, "mert");
 my $mert_pro_cmd     = File::Spec->catfile($mertdir, "pro");
-my $mert_mira_cmd    = File::Spec->catfile($mertdir, "kbmira");
+my $mert_mira_cmd    = File::Spec->catfile($mertdir, "perceptron");
+if ($ONLINE) {
+    $mert_mira_cmd    = File::Spec->catfile($mertdir, "perceptron_online");
+}
 my $mert_eval_cmd    = File::Spec->catfile($mertdir, "evaluator");
 
 die "Not executable: $mert_extract_cmd" if ! -x $mert_extract_cmd;
@@ -424,10 +434,6 @@ $scconfig =~ s/\s+$//;
 $scconfig =~ s/\s+/,/g;
 
 $scconfig = "--scconfig $scconfig" if ($scconfig);
-
-if ($sctype =~ /RED/) {
-    $scconfig .= ",stat:red/red.nbest.stat" ;
-}
 
 my $mert_extract_args = "$sctype $scconfig";
 
@@ -690,12 +696,12 @@ if ($continue) {
     my @newweights = split /\s+/, $bestpoint;
 
     # Sanity check: order of lambdas must match
-    if (!$___HG_MIRA) {
+    #if (!$___HG_MIRA) {
       sanity_check_order_of_lambdas($featlist,
         "gunzip -c < run$step.best$___N_BEST_LIST_SIZE.out.gz |");
-    } else {
-      print STDERR "WARN: No sanity check of order of features in hypergraph mira\n";
-    }
+    #} else {
+    #  print STDERR "WARN: No sanity check of order of features in hypergraph mira\n";
+    #}
 
     # update my cache of lambda values
     $featlist->{"values"} = \@newweights;
@@ -811,7 +817,7 @@ while (1) {
       $lsamp_file      = "$lsamp_file.gz";
       $nbest_file      = "$combined_file";
     }
-    safesystem("gzip -f $nbest_file") or die "Failed to gzip run*out" unless $___HG_MIRA;
+    safesystem("gzip -f $nbest_file") or die "Failed to gzip run*out" ;#unless $___HG_MIRA;
     $nbest_file = $nbest_file.".gz";
   } else {
     $nbest_file = "run$run.best$___N_BEST_LIST_SIZE.out.gz";
@@ -827,30 +833,16 @@ while (1) {
     my $base_score_file   = "scores.dat";
     my $feature_file      = "run$run.${base_feature_file}";
     my $score_file        = "run$run.${base_score_file}";
-    
-    my $cmd = "";
-    
-    if ($sctype =~ /RED/) {
-        my $num_threads = 1;
-        if($__THREADS) {
-            $num_threads = $__THREADS;
-        }
-        $cmd = "bash ~/plateform/red/red-parallel.sh $nbest_file $___DEV_E $refdep $num_threads\n";
-    }
-    
-    $cmd .= "$mert_extract_cmd $mert_extract_args --scfile $score_file --ffile $feature_file -r " . join(",", @references) . " -n $nbest_file";
 
-  if (! $___HG_MIRA) {
+    my $cmd = "$mert_extract_cmd $mert_extract_args --scfile $score_file --ffile $feature_file -r " . join(",", @references) . " -n $nbest_file";
+
+  #if (! $___HG_MIRA) {
     $cmd .= " -d" if $__PROMIX_TRAINING; # Allow duplicates
     # remove segmentation
     $cmd .= " -l $__REMOVE_SEGMENTATION" if  $__PROMIX_TRAINING;
     $cmd = &create_extractor_script($cmd, $___WORKING_DIR);
     &submit_or_exec($cmd, "extract.out","extract.err");
-    
-    if ($sctype =~ /RED/) {
-        `cp red/red.nbest.stat run$run.red.nbest.stat`;
-    }
-  }
+  #}
 
   # Create the initial weights file for mert: init.opt
   my @MIN  = @{$featlist->{"mins"}};
@@ -978,7 +970,16 @@ while (1) {
     &submit_or_exec($cmd, "run$run.mira.out", $mert_logfile);
   } elsif ($___HG_MIRA) {
     safesystem("echo 'not used' > $weights_out_file") or die;
-    $mira_settings .= " --type hypergraph ";
+    if (!$ONLINE && !$MAXVIO) {
+        $mira_settings .= " --type hypergraph ";
+    } elsif ($MAXVIO) {
+        $mira_settings .= " --type maxvio ";
+        $mira_settings .= " --hgdirref $hypergraph_dir_ref ";
+    } else {
+        $mira_settings .= " --hgdirref $hypergraph_dir_ref ";
+        #$mira_settings .= " -mosesini run$run.moses.ini ";
+        $mira_settings .= " --mosesargs \"-only-tunable -threads all -output-search-graph-hypergraph true gz -beam-threshold 1e-1000  -f run$run.moses.ini -i $___DEV_F\" ";
+    }
     $mira_settings .= join(" ", map {"--reference $_"} @references);
     $mira_settings .= " --hgdir $hypergraph_dir ";
     #$mira_settings .= "--verbose "; 
@@ -1002,10 +1003,10 @@ while (1) {
     if ! -s $weights_out_file;
 
   # backup copies
-  if (! $___HG_MIRA) {
+  #if (! $___HG_MIRA) {
     safesystem("\\cp -f extract.err run$run.extract.err") or die;
     safesystem("\\cp -f extract.out run$run.extract.out") or die;
-  }
+  #}
   safesystem("\\cp -f $mert_outfile run$run.$mert_outfile") or die;
   safesystem("\\cp -f $mert_logfile run$run.$mert_logfile") or die;
   safesystem("touch $mert_logfile run$run.$mert_logfile") or die;
@@ -1148,13 +1149,7 @@ if($___RETURN_BEST_DEV) {
   my $bestbleu=0;
   my $evalout = "eval.out";
   for (my $i = 1; $i < $run; $i++) {
-    
-    my $red_extract_args = $mert_extract_args;
-    if ($sctype =~ /RED/) {
-        $red_extract_args =~ s/red\/red\.nbest\.stat/run$i\.red.nbest\.stat/;
-    }
-      
-    my $cmd = "$mert_eval_cmd --reference " . join(",", @references) . " $red_extract_args --nbest run$i.best$___N_BEST_LIST_SIZE.out.gz";
+    my $cmd = "$mert_eval_cmd --reference " . join(",", @references) . " $mert_extract_args --nbest run$i.best$___N_BEST_LIST_SIZE.out.gz";
     $cmd .= " -l $__REMOVE_SEGMENTATION" if defined( $__PROMIX_TRAINING);
     safesystem("$cmd 2> /dev/null 1> $evalout");
     open my $fh, '<', $evalout or die "Can't read $evalout : $!";
@@ -1212,8 +1207,10 @@ sub get_weights_from_mert {
     die "It seems feature values are invalid or unable to read $outfile." if $sum < 1e-09;
   
     $devbleu = "unknown";
-    foreach (@WEIGHT) { $_ /= $sum; }
-    foreach (keys %{$sparse_weights}) { $$sparse_weights{$_} /= $sum; }
+    if ($normalize) {
+        foreach (@WEIGHT) { $_ /= $sum; }
+        foreach (keys %{$sparse_weights}) { $$sparse_weights{$_} /= $sum; }
+    }
     $bestpoint = join(" ", @WEIGHT);
 
     if($___BATCH_MIRA || $___HG_MIRA) {
@@ -1291,7 +1288,9 @@ sub run_decoder {
       my $nbest_list_cmd = "-n-best-list $filename $___N_BEST_LIST_SIZE distinct";
       if ($___HG_MIRA) {
         safesystem("rm -rf $hypergraph_dir");
-        $nbest_list_cmd = "-output-search-graph-hypergraph true gz";
+        if (!$ONLINE) {
+            $nbest_list_cmd .= " -output-search-graph-hypergraph true gz -only-tunable";
+        }
       }
       $decoder_cmd = "$___DECODER $___DECODER_FLAGS  -config $___CONFIG";
       $decoder_cmd .= " -inputtype $___INPUTTYPE" if defined($___INPUTTYPE);
@@ -1307,11 +1306,11 @@ sub run_decoder {
     print STDERR "Executing: $decoder_cmd \n";
     safesystem($decoder_cmd) or die "The decoder died. CONFIG WAS $decoder_config \n";
 
-    if (!$___HG_MIRA) {
+    #if (!$___HG_MIRA) {
       sanity_check_order_of_lambdas($featlist,$filename);
-    } else {
-      print STDERR "WARN: No sanity check of order of features in hypergraph mira\n";
-    }
+    #} else {
+    #  print STDERR "WARN: No sanity check of order of features in hypergraph mira\n";
+    #}
     return ($filename, $lsamp_filename, $hypergraph_dir);
 }
 
