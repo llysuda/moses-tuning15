@@ -59,7 +59,7 @@ int main(int argc, char** argv)
   bool help;
   string denseInitFile;
   string sparseInitFile;
-  string type = "maxvio";
+  string type = "nbest";
   string sctype = "BLEU";
   string scconfig = "";
   vector<string> scoreFiles;

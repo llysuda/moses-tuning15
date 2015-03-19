@@ -173,6 +173,9 @@ my $hypergraph_dir_ref = "";
 
 my $MAXVIO = 0;
 
+my $refdep = "";
+my $redType = "stat";
+
 use Getopt::Long;
 GetOptions(
   "working-dir=s" => \$___WORKING_DIR,
@@ -231,7 +234,9 @@ GetOptions(
   "norm!" => \$normalize,
   "online" => \$ONLINE,
   "maxvio" => \$MAXVIO,
-  "hg-dir-ref=s" => \$hypergraph_dir_ref
+  "hg-dir-ref=s" => \$hypergraph_dir_ref,
+  "red-ref-dep=s" => \$refdep,
+  "red-type=s" => \$redType
 ) or exit(1);
 
 # the 4 required parameters can be supplied on the command line directly
@@ -434,6 +439,13 @@ $scconfig =~ s/\s+$//;
 $scconfig =~ s/\s+/,/g;
 
 $scconfig = "--scconfig $scconfig" if ($scconfig);
+
+if ($sctype =~ /RED/) {
+    $scconfig .= ",stat:red/red.nbest.stat,type:$redType" ;
+    if (defined $batch_mira_args && $scconfig) {
+        $batch_mira_args .= " $scconfig";
+    }
+}
 
 my $mert_extract_args = "$sctype $scconfig";
 
@@ -833,8 +845,18 @@ while (1) {
     my $base_score_file   = "scores.dat";
     my $feature_file      = "run$run.${base_feature_file}";
     my $score_file        = "run$run.${base_score_file}";
-
-    my $cmd = "$mert_extract_cmd $mert_extract_args --scfile $score_file --ffile $feature_file -r " . join(",", @references) . " -n $nbest_file";
+    
+    my $cmd = "";
+    
+    if ($sctype =~ /RED/) {
+        my $num_threads = 1;
+        if($__THREADS) {
+            $num_threads = $__THREADS;
+        }
+        $cmd = "bash ~/plateform/red/red-parallel.sh $nbest_file $___DEV_E $refdep $num_threads $redType\n";
+    }
+    
+    $cmd .= "$mert_extract_cmd $mert_extract_args --scfile $score_file --ffile $feature_file -r " . join(",", @references) . " -n $nbest_file";
 
   #if (! $___HG_MIRA) {
     $cmd .= " -d" if $__PROMIX_TRAINING; # Allow duplicates
@@ -842,6 +864,10 @@ while (1) {
     $cmd .= " -l $__REMOVE_SEGMENTATION" if  $__PROMIX_TRAINING;
     $cmd = &create_extractor_script($cmd, $___WORKING_DIR);
     &submit_or_exec($cmd, "extract.out","extract.err");
+    
+    if ($sctype =~ /RED/) {
+        `cp red/red.nbest.stat run$run.red.nbest.stat`;
+    }
   #}
 
   # Create the initial weights file for mert: init.opt
@@ -1149,7 +1175,13 @@ if($___RETURN_BEST_DEV) {
   my $bestbleu=0;
   my $evalout = "eval.out";
   for (my $i = 1; $i < $run; $i++) {
-    my $cmd = "$mert_eval_cmd --reference " . join(",", @references) . " $mert_extract_args --nbest run$i.best$___N_BEST_LIST_SIZE.out.gz";
+      
+    my $red_extract_args = $mert_extract_args;
+    if ($sctype =~ /RED/) {
+        $red_extract_args =~ s/red\/red\.nbest\.stat/run$i\.red.nbest\.stat/;
+    }
+      
+    my $cmd = "$mert_eval_cmd --reference " . join(",", @references) . " $red_extract_args --nbest run$i.best$___N_BEST_LIST_SIZE.out.gz";
     $cmd .= " -l $__REMOVE_SEGMENTATION" if defined( $__PROMIX_TRAINING);
     safesystem("$cmd 2> /dev/null 1> $evalout");
     open my $fh, '<', $evalout or die "Can't read $evalout : $!";
