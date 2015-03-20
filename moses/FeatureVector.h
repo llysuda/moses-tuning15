@@ -80,7 +80,7 @@ struct FName {
     init(name);
   }
 
-  const std::string& name() const;
+  std::string name() const;
   //const std::string& root() const {return m_root;}
 
   size_t hash() const;
