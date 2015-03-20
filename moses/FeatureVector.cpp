@@ -149,6 +149,9 @@ size_t FName::hash() const
 
 const std::string& FName::name() const
 {
+#ifdef WITH_THREADS
+  boost::unique_lock<boost::shared_mutex> lock(m_idLock);
+#endif
   return id2name[m_id];
 }
 
