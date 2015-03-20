@@ -147,7 +147,7 @@ size_t FName::hash() const
   return boost::hash_value(m_id);
 }
 
-std::string FName::name() const
+const std::string& FName::name() const
 {
   return id2name[m_id];
 }
