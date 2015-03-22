@@ -5,7 +5,6 @@
 #include "StaticData.h"
 #include "moses/FF/StatelessFeatureFunction.h"
 #include "moses/FF/StatefulFeatureFunction.h"
-#include <sstream>
 
 using namespace std;
 
@@ -292,7 +291,10 @@ FVector ScoreComponentCollection::GetVectorForProducer(const FeatureFunction* sp
   std::string prefix = sp->GetScoreProducerDescription() + FName::SEP;
   for(FVector::FNVmap::const_iterator i = m_scores.cbegin(); i != m_scores.cend(); i++) {
     std::stringstream name;
-    name << i->first;
+    std::ostream* name2;
+    (*name2) << i->first;
+    //name << i->first;
+    name << name2->rdbuf();
     if (name.str().substr( 0, prefix.length() ).compare( prefix ) == 0)
       fv[i->first] = i->second;
   }
