@@ -5,6 +5,7 @@
 #include "StaticData.h"
 #include "moses/FF/StatelessFeatureFunction.h"
 #include "moses/FF/StatefulFeatureFunction.h"
+#include <sstream>
 
 using namespace std;
 
