@@ -148,8 +148,10 @@ float RedScorer::calculateScore(const vector<ScoreStatsType>& comps) const
     }
 
     score = m_weights[0] * ufmean + m_weights[1] * bfmean + m_weights[2] * tfmean;
-  } else {
+  } else if (m_type == "score") {
     score = comps[2]/comps[1];
+  } else {
+    throw runtime_error("RED error type !");
   }
   return score;
 }
