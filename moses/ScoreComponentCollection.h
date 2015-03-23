@@ -37,6 +37,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "Util.h"
 #include "util/exception.hh"
 
+#ifdef WITH_THREADS
+#include <boost/thread/shared_mutex.hpp>
+#endif
+
 namespace Moses
 {
 
@@ -93,6 +97,11 @@ class ScoreComponentCollection
 
 private:
   FVector m_scores;
+
+#ifdef WITH_THREADS
+  //reader-writer lock
+  static boost::shared_mutex m_idLock;
+#endif
 
 public:
   typedef std::pair<size_t,size_t> IndexPair;

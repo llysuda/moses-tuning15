@@ -289,6 +289,11 @@ void ScoreComponentCollection::ZeroDenseFeatures(const FeatureFunction* sp)
 //! get subset of scores that belong to a certain sparse ScoreProducer
 FVector ScoreComponentCollection::GetVectorForProducer(const FeatureFunction* sp) const
 {
+#ifdef WITH_THREADS
+    //upgrade to writer lock
+    boost::unique_lock<boost::shared_mutex> write_lock(m_idLock);
+#endif
+
   FVector fv(s_denseVectorSize);
   std::string prefix = sp->GetScoreProducerDescription() + FName::SEP;
   for(FVector::FNVmap::const_iterator i = m_scores.cbegin(); i != m_scores.cend(); i++) {

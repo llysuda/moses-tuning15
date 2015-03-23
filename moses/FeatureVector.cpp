@@ -138,10 +138,6 @@ void FName::eraseId(size_t id)
 
 std::ostream& operator<<( std::ostream& out, const FName& name)
 {
-#ifdef WITH_THREADS
-  //reader lock
-  boost::shared_lock<boost::shared_mutex> write_lock(m_idLock);
-#endif
   out << name.name();
   return out;
 }
