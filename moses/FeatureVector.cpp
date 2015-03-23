@@ -138,7 +138,8 @@ void FName::eraseId(size_t id)
 
 std::ostream& operator<<( std::ostream& out, const FName& name)
 {
-  out << name.name();
+  string nameStr = name.name();
+  out << nameStr;
   return out;
 }
 
