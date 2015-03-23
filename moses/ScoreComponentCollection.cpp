@@ -6,21 +6,12 @@
 #include "moses/FF/StatelessFeatureFunction.h"
 #include "moses/FF/StatefulFeatureFunction.h"
 
-#if defined __MINGW32__ && defined WITH_THREADS
-#include <boost/thread/locks.hpp>
-#endif // WITH_THREADS
-
 #include <sstream>
 
 using namespace std;
 
 namespace Moses
 {
-
-#ifdef WITH_THREADS
-boost::shared_mutex ScoreComponentCollection::m_idLock;
-#endif
-
 void ScorePair::PlusEquals(const ScorePair &other)
 {
   PlusEquals(other.denseScores);
@@ -359,10 +350,6 @@ void ScoreComponentCollection::OutputFeatureScores( std::ostream& out
     }
   }
 
-#ifdef WITH_THREADS
-    //upgrade to writer lock
-    boost::unique_lock<boost::shared_mutex> write_lock(m_idLock);
-#endif
   // sparse features
   const FVector scores = GetVectorForProducer( ff );
   for(FVector::FNVmap::const_iterator i = scores.cbegin(); i != scores.cend(); i++) {
