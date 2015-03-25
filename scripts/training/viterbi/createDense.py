@@ -6,7 +6,7 @@ if __name__ == '__main__':
     
     files = sys.argv
 
-    fname = []
+    fnames = []
     values = []
     for i,fname in enumerate(files):
         f = open(fname)
@@ -16,9 +16,9 @@ if __name__ == '__main__':
             name, val = line.split()
 
             if i == 0:
-                fname.append(name)
+                fnames.append(name)
             else:
-                assert(fname[count] == name)
+                assert(fnames[count] == name)
             
             if i == 0:
                 values.append(val)
