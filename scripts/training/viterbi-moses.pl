@@ -364,11 +364,11 @@ my $mert_mira_cmd    = File::Spec->catfile($mertdir, "kbmira");
 my $mert_eval_cmd    = File::Spec->catfile($mertdir, "evaluator");
 
 if ($viterbi) {
-    $mert_mert_cmd = File::Spec->catfile($SCRIPTS_ROOTDIR, "training", "viterbi", "main.py") ;
-    #$mert_mert_cmd = "python ".$mert_mert_cmd;
+    $mert_mert_cmd = File::Spec->catfile($SCRIPTS_ROOTDIR, "training", "viterbi", "main.py")
     $mert_pro_cmd = $mert_mert_cmd ;
     $mert_mira_cmd = $mert_mert_cmd ;
 }
+
 
 die "Not executable: $mert_extract_cmd" if ! -x $mert_extract_cmd;
 die "Not executable: $mert_mert_cmd"    if ! -x $mert_mert_cmd;
