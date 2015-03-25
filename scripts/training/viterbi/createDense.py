@@ -4,7 +4,7 @@ import sys
 
 if __name__ == '__main__':
     
-    files = sys.argv
+    files = sys.argv[1:]
 
     fnames = []
     values = []
