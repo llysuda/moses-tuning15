@@ -78,6 +78,7 @@ int main(int argc, char** argv)
   bool verbose = false; // Verbose updates
   bool safe_hope = false; // Model score cannot have more than BLEU_RATIO times more influence than BLEU
   size_t hgPruning = 50; //prune hypergraphs to have this many edges per reference word
+  bool strict = false;
 
   // Command-line processing follows pro.cpp
   po::options_description desc("Allowed options");
@@ -104,6 +105,7 @@ int main(int argc, char** argv)
   ("verbose", po::value(&verbose)->zero_tokens()->default_value(false), "Verbose updates")
   ("safe-hope", po::value(&safe_hope)->zero_tokens()->default_value(false), "Mode score's influence on hope decoding is limited")
   ("hg-prune", po::value<size_t>(&hgPruning), "Prune hypergraphs to have this many edges per reference word")
+  ("strict", po::value(&strict)->zero_tokens()->default_value(false), "only update when diff < 0")
   ;
 
   po::options_description cmdline_options;
@@ -269,7 +271,7 @@ int main(int argc, char** argv)
           cerr << "Loss: " << loss <<  " Scale: " << 1 << endl;
           cerr << endl;
         }
-        if(loss > 0) {
+        if(loss > 0 && (!strict || (strict && diff_score < 0))) {
           ValType eta = min(c, loss / diff.sqrNorm());
           wv.update(diff,eta);
           totalLoss+=loss;
