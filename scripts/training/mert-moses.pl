@@ -442,6 +442,7 @@ $scconfig = "--scconfig $scconfig" if ($scconfig);
 if ($sctype =~ /RED/) {
     $scconfig .= ",stat:red/red.nbest.stat,type:$redType" ;
     if (defined $batch_mira_args && $scconfig) {
+        $batch_mira_args =~ s/\-\-scconfig(?:\s+|=)(.+?)(\s|$)//;
         $batch_mira_args .= " $scconfig";
     }
 }
