@@ -105,7 +105,9 @@ private:
   size_t sentenceId_;
   size_t totalSourceLength_;
   const Graph& graph_;
+public:
   std::vector<FeatureStatsType> backgroundBleu_;
+private:
   FeatureStatsType backgroundRefLength_;
 
   void UpdateMatches(const NgramCounter& counter, std::vector<FeatureStatsType>& bleuStats) const;
