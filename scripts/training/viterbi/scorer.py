@@ -26,7 +26,8 @@ class Scorer(object):
     def inner(self, list1, list2):
         assert(len(list1) == len(list2))
         
-        total = float(0)
-        for w1, w2 in zip(list1, list2):
-            total += w1 * w2
-        return total
+        total = [w1+w2 for w1, w2 in zip(list1,list2)]
+        #total = float(0)
+        #for w1, w2 in zip(list1, list2):
+        #    total += w1 * w2
+        return sum(total)
