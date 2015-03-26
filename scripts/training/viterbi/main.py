@@ -211,7 +211,7 @@ if __name__ == '__main__':
     logging.info("Best point: "+" ".join([str(x) for x in best_w])+ " => "+ str(best_score))
 
     f = open('weights.txt','w')
-    f.write(" ".join([str(x) for x in w])+"\n")
+    f.write(" ".join([str(x) for x in best_w])+"\n")
     f.close()
 
     Output(ofile,best_w,wnames)
