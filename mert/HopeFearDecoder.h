@@ -143,7 +143,58 @@ public:
     const std::vector<ValType>& backgroundBleu,
     const MiraWeightVector& wv,
     HopeFearData* hopeFear
+  ){}
+
+  void HopeFear(
+      const std::vector<ValType>& backgroundBleu,
+      const MiraWeightVector& wv,
+      std::vector<HopeFearData*> hopeFear
+    );
+
+  virtual void MaxModel(const AvgWeightVector& wv, std::vector<ValType>* stats);
+
+private:
+  size_t num_dense_;
+  //maps sentence Id to graph ptr
+  typedef std::map<size_t, boost::shared_ptr<Graph> > GraphColl;
+  GraphColl graphs_;
+  std::vector<size_t> sentenceIds_;
+  std::vector<size_t>::const_iterator sentenceIdIter_;
+  ReferenceSet references_;
+  Vocab vocab_;
+};
+
+/** Gets hope-fear from hypergraphs */
+class SAHypergraphHopeFearDecoder : public virtual HopeFearDecoder
+{
+public:
+  SAHypergraphHopeFearDecoder(
+    const std::string& hypergraphDir,
+    const std::vector<std::string>& referenceFiles,
+    size_t num_dense,
+    bool streaming,
+    bool no_shuffle,
+    bool safe_hope,
+    size_t hg_pruning,
+    const MiraWeightVector& wv,
+    Scorer* scorer_
   );
+
+  virtual void reset();
+  virtual void next();
+  virtual bool finished();
+
+  virtual void HopeFear(
+    const std::vector<ValType>& backgroundBleu,
+    const MiraWeightVector& wv,
+    HopeFearData* hopeFear
+  ){};
+
+  void HopeFear(
+      const std::vector<ValType>& backgroundBleu,
+      const MiraWeightVector& wv,
+      std::vector<HopeFearData*> hopeFears
+    );
 
   virtual void MaxModel(const AvgWeightVector& wv, std::vector<ValType>* stats);
 

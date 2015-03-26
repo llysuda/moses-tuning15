@@ -355,6 +355,197 @@ void HypergraphHopeFearDecoder::MaxModel(const AvgWeightVector& wv, vector<ValTy
   }
 }
 
+SAHypergraphHopeFearDecoder::SAHypergraphHopeFearDecoder
+(
+  const string& hypergraphDir,
+  const vector<string>& referenceFiles,
+  size_t num_dense,
+  bool streaming,
+  bool no_shuffle,
+  bool safe_hope,
+  size_t hg_pruning,
+  const MiraWeightVector& wv,
+  Scorer* scorer
+) :
+  num_dense_(num_dense)
+{
+
+  UTIL_THROW_IF(streaming, util::Exception, "Streaming not currently supported for hypergraphs");
+  UTIL_THROW_IF(!fs::exists(hypergraphDir), HypergraphException, "Directory '" << hypergraphDir << "' does not exist");
+  UTIL_THROW_IF(!referenceFiles.size(), util::Exception, "No reference files supplied");
+  references_.Load(referenceFiles, vocab_);
+
+  SparseVector weights;
+  wv.ToSparse(&weights, num_dense);
+  scorer_ = scorer;
+
+  static const string kWeights = "weights";
+  fs::directory_iterator dend;
+  size_t fileCount = 0;
+
+  cerr << "Reading  hypergraphs" << endl;
+  for (fs::directory_iterator di(hypergraphDir); di != dend; ++di) {
+    const fs::path& hgpath = di->path();
+    if (hgpath.filename() == kWeights) continue;
+    //  cerr << "Reading " << hgpath.filename() << endl;
+    Graph graph(vocab_);
+    size_t id = boost::lexical_cast<size_t>(hgpath.stem().string());
+    util::scoped_fd fd(util::OpenReadOrThrow(hgpath.string().c_str()));
+    //util::FilePiece file(di->path().string().c_str());
+    util::FilePiece file(fd.release());
+    ReadGraph(file,graph);
+
+    //cerr << "ref length " << references_.Length(id) << endl;
+    size_t edgeCount = hg_pruning * references_.Length(id);
+    boost::shared_ptr<Graph> prunedGraph;
+    prunedGraph.reset(new Graph(vocab_));
+    graph.Prune(prunedGraph.get(), weights, edgeCount);
+    graphs_[id] = prunedGraph;
+    // cerr << "Pruning to v=" << graphs_[id]->VertexSize() << " e=" << graphs_[id]->EdgeSize()  << endl;
+    ++fileCount;
+    if (fileCount % 10 == 0) cerr << ".";
+    if (fileCount % 400 ==  0) cerr << " [count=" << fileCount << "]\n";
+  }
+  cerr << endl << "Done" << endl;
+
+  sentenceIds_.resize(graphs_.size());
+  for (size_t i = 0; i < graphs_.size(); ++i) sentenceIds_[i] = i;
+  if (!no_shuffle) {
+    random_shuffle(sentenceIds_.begin(), sentenceIds_.end());
+  }
+
+}
+
+void SAHypergraphHopeFearDecoder::reset()
+{
+  sentenceIdIter_ = sentenceIds_.begin();
+}
+
+void SAHypergraphHopeFearDecoder::next()
+{
+  sentenceIdIter_++;
+}
+
+bool SAHypergraphHopeFearDecoder::finished()
+{
+  return sentenceIdIter_ == sentenceIds_.end();
+}
+
+typedef pair<size_t, size_t> Range ;
+typedef map<Range, boost::shared_ptr<HgHypothesis> > HypColl;
+
+void SAHypergraphHopeFearDecoder::HopeFear(
+  const vector<ValType>& backgroundBleu,
+  const MiraWeightVector& wv,
+  vector<HopeFearData*> hopeFears
+)
+{
+  size_t sentenceId = *sentenceIdIter_;
+  SparseVector weights;
+  wv.ToSparse(&weights, num_dense_);
+  const Graph& graph = *(graphs_[sentenceId]);
+
+  HypColl hopes;
+  HypColl fears;
+  HypColl models;
+  for(size_t safe_loop=0; safe_loop<2; safe_loop++) {
+
+    //Model decode
+    ViterbiForSA(graph, weights, 1, references_, sentenceId, backgroundBleu, hopes);
+    ViterbiForSA(graph, weights, -1, references_, sentenceId, backgroundBleu, fears);
+    ViterbiForSA(graph, weights, 0, references_, sentenceId, backgroundBleu, models);
+
+    break;
+  }
+
+  for(HypColl::const_iterator)
+
+  HopeFearData hopeFear;
+  //modelFeatures, hopeFeatures and fearFeatures
+  hopeFear.modelFeatures = MiraFeatureVector(modelHypo.featureVector, num_dense_);
+  hopeFear.hopeFeatures = MiraFeatureVector(hopeHypo.featureVector, num_dense_);
+  hopeFear.fearFeatures = MiraFeatureVector(fearHypo.featureVector, num_dense_);
+
+  //Need to know which are to be mapped to dense features!
+
+  //Only C++11
+  //hopeFear->modelStats.assign(std::begin(modelHypo.bleuStats), std::end(modelHypo.bleuStats));
+  vector<ValType> fearStats(scorer_->NumberOfScores());
+  hopeFear->hopeStats.reserve(scorer_->NumberOfScores());
+  hopeFear->modelStats.reserve(scorer_->NumberOfScores());
+  for (size_t i = 0; i < fearStats.size(); ++i) {
+    hopeFear->modelStats.push_back(modelHypo.bleuStats[i]);
+    hopeFear->hopeStats.push_back(hopeHypo.bleuStats[i]);
+
+    fearStats[i] = fearHypo.bleuStats[i];
+  }
+  /*
+  cerr << "hope" << endl;;
+  for (size_t i = 0; i < hopeHypo.text.size(); ++i) {
+    cerr << hopeHypo.text[i]->first << " ";
+  }
+  cerr << endl;
+  for (size_t i = 0; i < fearStats.size(); ++i) {
+    cerr << hopeHypo.bleuStats[i] << " ";
+  }
+  cerr << endl;
+  cerr << "fear";
+  for (size_t i = 0; i < fearHypo.text.size(); ++i) {
+    cerr << fearHypo.text[i]->first << " ";
+  }
+  cerr << endl;
+  for (size_t i = 0; i < fearStats.size(); ++i) {
+    cerr  << fearHypo.bleuStats[i] << " ";
+  }
+  cerr << endl;
+  cerr << "model";
+  for (size_t i = 0; i < modelHypo.text.size(); ++i) {
+    cerr << modelHypo.text[i]->first << " ";
+  }
+  cerr << endl;
+  for (size_t i = 0; i < fearStats.size(); ++i) {
+    cerr << modelHypo.bleuStats[i] << " ";
+  }
+  cerr << endl;
+  */
+  hopeFear->hopeBleu = sentenceLevelBackgroundBleu(hopeFear->hopeStats, backgroundBleu);
+  hopeFear->fearBleu = sentenceLevelBackgroundBleu(fearStats, backgroundBleu);
+
+  //If fv and bleu stats are equal, then assume equal
+  hopeFear->hopeFearEqual = true; //(hopeFear->hopeBleu - hopeFear->fearBleu) >= 1e-8;
+  if (hopeFear->hopeFearEqual) {
+    for (size_t i = 0; i < fearStats.size(); ++i) {
+      if (fearStats[i] != hopeFear->hopeStats[i]) {
+        hopeFear->hopeFearEqual = false;
+        break;
+      }
+    }
+  }
+  hopeFear->hopeFearEqual = hopeFear->hopeFearEqual && (hopeFear->fearFeatures == hopeFear->hopeFeatures);
+
+}
+
+void SAHypergraphHopeFearDecoder::MaxModel(const AvgWeightVector& wv, vector<ValType>* stats)
+{
+  assert(!finished());
+  HgHypothesis bestHypo;
+  size_t sentenceId = *sentenceIdIter_;
+  SparseVector weights;
+  wv.ToSparse(&weights, num_dense_);
+  vector<ValType> bg(scorer_->NumberOfScores());
+  //cerr << "Calculating bleu on " << sentenceId << endl;
+  Viterbi(*(graphs_[sentenceId]), weights, 0, references_, sentenceId, bg, &bestHypo);
+  stats->resize(bestHypo.bleuStats.size());
+  /*
+  for (size_t i = 0; i < bestHypo.text.size(); ++i) {
+    cerr << bestHypo.text[i]->first << " ";
+  }
+  cerr << endl;
+  */
+  for (size_t i = 0; i < bestHypo.bleuStats.size(); ++i) {
+    (*stats)[i] = bestHypo.bleuStats[i];
+  }
+}
 
 
 };
