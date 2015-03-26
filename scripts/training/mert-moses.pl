@@ -170,6 +170,7 @@ my $refdep = "";
 my $redType = "stat";
 
 my $viterbi = 0;
+my $norm = 1;
 
 use Getopt::Long;
 GetOptions(
@@ -228,7 +229,8 @@ GetOptions(
   "spe-symal=s" => \$___DEV_SYMAL,
   "red-ref-dep=s" => \$refdep,
   "red-type=s" => \$redType,
-  "viterbi" => \$viterbi
+  "viterbi" => \$viterbi,
+  "norm!" => \$norm
 ) or exit(1);
 
 # the 4 required parameters can be supplied on the command line directly
@@ -1227,8 +1229,10 @@ sub get_weights_from_mert {
     die "It seems feature values are invalid or unable to read $outfile." if $sum < 1e-09;
   
     $devbleu = "unknown";
-    foreach (@WEIGHT) { $_ /= $sum; }
-    foreach (keys %{$sparse_weights}) { $$sparse_weights{$_} /= $sum; }
+	if ($norm) {
+        foreach (@WEIGHT) { $_ /= $sum; }
+        foreach (keys %{$sparse_weights}) { $$sparse_weights{$_} /= $sum; }
+    }
     $bestpoint = join(" ", @WEIGHT);
 
     if($___BATCH_MIRA || $___HG_MIRA) {
