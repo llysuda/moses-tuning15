@@ -627,9 +627,9 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
     } else {
       for (size_t ei = 0; ei < outgoing[vi].size(); ++ei) {
         //cerr << "Edge " << edgeIds[outgoing[vi][ei]] << endl;
-        FeatureStatsType outgoingScore = outgoing[vi][ei]->GetScore(weights);
+        FeatureStatsType outgoingScore = 0;
         //add score of head
-        //outgoingScore += forwardPointers[edgeHeads[outgoing[vi][ei]]].second;
+        outgoingScore += forwardPointers[edgeHeads[outgoing[vi][ei]]].second;
         //cerr << "Forward score " << outgoingScore << endl;
         //forwardPointers[edgeHeads[outgoing[vi][ei]]].second = outgoingScore;
         //sum scores of siblings
@@ -637,11 +637,11 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
           size_t siblingId = outgoing[vi][ei]->Children()[i];
           if (siblingId != vi) {
             //cerr << "\tSibling " << siblingId << endl;
-            //outgoingScore += forwardPointers[siblingId].second;
-            outgoingScore = max(outgoingScore + forwardPointers[edgeHeads[outgoing[vi][ei]]].second, kMinScore);
+            outgoingScore += forwardPointers[siblingId].second;
+            //outgoingScore = max(outgoingScore + forwardPointers[edgeHeads[outgoing[vi][ei]]].second, kMinScore);
           }
         }
-        //outgoingScore += outgoing[vi][ei]->GetScore(weights);
+        outgoingScore += outgoing[vi][ei]->GetScore(weights);
         if (outgoingScore > forwardPointers[vi].second) {
           forwardPointers[vi].first = outgoing[vi][ei];
           forwardPointers[vi].second = outgoingScore;

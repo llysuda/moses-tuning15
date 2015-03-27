@@ -714,12 +714,12 @@ if ($continue) {
     my @newweights = split /\s+/, $bestpoint;
 
     # Sanity check: order of lambdas must match
-    if (!$___HG_MIRA) {
+    #if (!$___HG_MIRA) {
       sanity_check_order_of_lambdas($featlist,
         "gunzip -c < run$step.best$___N_BEST_LIST_SIZE.out.gz |");
-    } else {
-      print STDERR "WARN: No sanity check of order of features in hypergraph mira\n";
-    }
+    #} else {
+    #  print STDERR "WARN: No sanity check of order of features in hypergraph mira\n";
+    #}
 
     # update my cache of lambda values
     $featlist->{"values"} = \@newweights;
@@ -835,7 +835,7 @@ while (1) {
       $lsamp_file      = "$lsamp_file.gz";
       $nbest_file      = "$combined_file";
     }
-    safesystem("gzip -f $nbest_file") or die "Failed to gzip run*out" unless $___HG_MIRA;
+    safesystem("gzip -f $nbest_file") or die "Failed to gzip run*out";# unless $___HG_MIRA;
     $nbest_file = $nbest_file.".gz";
   } else {
     $nbest_file = "run$run.best$___N_BEST_LIST_SIZE.out.gz";
@@ -1317,7 +1317,7 @@ sub run_decoder {
       my $nbest_list_cmd = "-n-best-list $filename $___N_BEST_LIST_SIZE distinct";
       if ($___HG_MIRA) {
         safesystem("rm -rf $hypergraph_dir");
-        $nbest_list_cmd = "-output-search-graph-hypergraph true gz";
+        $nbest_list_cmd .= " -output-search-graph-hypergraph true gz";
       }
       $decoder_cmd = "$___DECODER $___DECODER_FLAGS  -config $___CONFIG";
       $decoder_cmd .= " -inputtype $___INPUTTYPE" if defined($___INPUTTYPE);
