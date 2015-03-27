@@ -86,4 +86,7 @@ contrib/m4m/merge-sorted
 
 .cproject
 .project
-mert/sakbmira
+mert/sakbmira 
+mert/perceptron 
+.*
+!.ignore
