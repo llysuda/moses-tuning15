@@ -637,7 +637,7 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
           size_t siblingId = outgoing[vi][ei]->Children()[i];
           if (siblingId != vi) {
             //cerr << "\tSibling " << siblingId << endl;
-            outgoingScore += forwardPointers[siblingId].second;
+            outgoingScore += backPointers[siblingId].second;
             //outgoingScore = max(outgoingScore + forwardPointers[edgeHeads[outgoing[vi][ei]]].second, kMinScore);
           }
         }
