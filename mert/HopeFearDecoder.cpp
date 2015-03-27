@@ -469,6 +469,28 @@ void SAHypergraphHopeFearDecoder::HopeFear(
     const HgHypothesis& fearHypo = *(fears.find(range)->second);
     const HgHypothesis& modelHypo = *(models.find(range)->second);
 
+    // verbose
+    cerr << sentenceId << endl;
+    cerr << "hope: ";
+    for(size_t ti = 0; ti < hopeHypo.text.size(); ++ti) {
+      const Vocab::Entry* entry = hopeHypo.text[ti];
+      cerr << (*entry).first << " ";
+    }
+    cerr << endl;
+    cerr << "model: ";
+    for(size_t ti = 0; ti < modelHypo.text.size(); ++ti) {
+      const Vocab::Entry* entry = modelHypo.text[ti];
+      cerr << (*entry).first << " ";
+    }
+    cerr << endl;
+    cerr << "fear: ";
+    for(size_t ti = 0; ti < fearHypo.text.size(); ++ti) {
+      const Vocab::Entry* entry = fearHypo.text[ti];
+      cerr << (*entry).first << " ";
+    }
+    cerr << endl;
+    // verbose
+
     HopeFearData hopeFear;
     //modelFeatures, hopeFeatures and fearFeatures
     hopeFear.modelFeatures = MiraFeatureVector(modelHypo.featureVector, num_dense_);
