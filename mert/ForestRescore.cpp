@@ -654,6 +654,7 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
   //    cerr  << "backpointer[" << vi << "] = (" << backPointers[vi].first << "," << backPointers[vi].second << ")" << endl;
   for (size_t vi = 0; vi < graph.VertexSize(); ++vi) {
     const Vertex& vertex = graph.GetVertex(vi);
+
     boost::shared_ptr<HgHypothesis> bestHypo (new HgHypothesis());
     GetBestHypothesis(vi, graph, backPointers, bestHypo.get());
 
