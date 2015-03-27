@@ -119,6 +119,7 @@ struct HgHypothesis {
   SparseVector featureVector;
   WordVec text;
   std::vector<FeatureStatsType> bleuStats;
+  std::vector<FeatureStatsType> bleuStatsPot;
 };
 
 typedef std::pair<size_t, size_t> Range ;
