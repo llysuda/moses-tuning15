@@ -178,7 +178,7 @@ if __name__ == '__main__':
     for loop in range(1):
         #logging.info('random init ' + str(loop))
         
-        init_w = InitWeight(ifile)
+        init_w = InitWeight(args.ifile)
         
         Init_score = data.score(init_w, scorerInst)
         

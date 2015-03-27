@@ -249,11 +249,17 @@ int main(int argc, char** argv)
     ValType totalLoss = 0.0;
     size_t sentenceIndex = 0;
     for(decoder->reset(); !decoder->finished(); decoder->next()) {
-      vector<HopeFearData*> hfds;
+      vector<HopeFearData> hfds;
       decoder->HopeFear(bg,wv,hfds);
 
-      for(vector<HopeFearData*>::const_iterator iter = hfds.begin(); iter != hfds.end(); ++iter) {
-        const HopeFearData& hfd = **iter;
+      for(vector<HopeFearData>::const_iterator iter = hfds.begin(); iter != hfds.end(); ++iter) {
+        const HopeFearData& hfd = *iter;
+
+        //cerr << "HFD:B" << endl;
+        //cerr << "modelFeatures: " << hfd.modelFeatures << endl;
+        //cerr << "hopeFeatures: " << hfd.hopeFeatures << endl;
+        //cerr << "fearFeatures: " << hfd.fearFeatures << endl;
+        //cerr << "HFD:E" << endl;
 
         // Update weights
         if (!hfd.hopeFearEqual && hfd.hopeBleu  > hfd.fearBleu) {

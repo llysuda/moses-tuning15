@@ -193,7 +193,7 @@ public:
   void HopeFear(
       const std::vector<ValType>& backgroundBleu,
       const MiraWeightVector& wv,
-      std::vector<HopeFearData*> hopeFears
+      std::vector<HopeFearData>& hopeFears
     );
 
   virtual void MaxModel(const AvgWeightVector& wv, std::vector<ValType>* stats);

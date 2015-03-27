@@ -437,7 +437,7 @@ typedef map<Range, boost::shared_ptr<HgHypothesis> > HypColl;
 void SAHypergraphHopeFearDecoder::HopeFear(
   const vector<ValType>& backgroundBleu,
   const MiraWeightVector& wv,
-  vector<HopeFearData*> hopeFears
+  vector<HopeFearData>& hopeFears
 )
 {
   size_t sentenceId = *sentenceIdIter_;
@@ -460,18 +460,25 @@ void SAHypergraphHopeFearDecoder::HopeFear(
 
   for(HypColl::const_iterator iter = hopes.begin(); iter != hopes.end(); ++iter) {
 
-    HopeFearData hopeFear;
-
     const Range& range = iter->first;
+
+    if (range.second - range.first < 1)
+      continue;
+
     const HgHypothesis& hopeHypo = *(iter->second);
     const HgHypothesis& fearHypo = *(fears.find(range)->second);
     const HgHypothesis& modelHypo = *(models.find(range)->second);
 
+    HopeFearData hopeFear;
     //modelFeatures, hopeFeatures and fearFeatures
     hopeFear.modelFeatures = MiraFeatureVector(modelHypo.featureVector, num_dense_);
     hopeFear.hopeFeatures = MiraFeatureVector(hopeHypo.featureVector, num_dense_);
     hopeFear.fearFeatures = MiraFeatureVector(fearHypo.featureVector, num_dense_);
 
+
+    //cerr << "modelFeatures: " << hopeFear.modelFeatures << endl;
+    //cerr << "hopeFeatures: " << hopeFear.hopeFeatures << endl;
+    //cerr << "fearFeatures: " << hopeFear.fearFeatures << endl;
     //Need to know which are to be mapped to dense features!
 
     //Only C++11
@@ -529,7 +536,7 @@ void SAHypergraphHopeFearDecoder::HopeFear(
     }
     hopeFear.hopeFearEqual = hopeFear.hopeFearEqual && (hopeFear.fearFeatures == hopeFear.hopeFeatures);
 
-    hopeFears.push_back(&hopeFear);
+    hopeFears.push_back(hopeFear);
   }
 
 }
