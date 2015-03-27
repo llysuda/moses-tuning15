@@ -484,8 +484,6 @@ static bool ExtendBestHypothesis(size_t vertexId, const Graph& graph, const vect
   return true;
 }
 
-typedef pair<size_t, size_t> Range ;
-typedef map<Range, boost::shared_ptr<HgHypothesis> > HypColl;
 
 void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWeight, const ReferenceSet& references , size_t sentenceId, const std::vector<FeatureStatsType>& backgroundBleu,  HypColl& bestHypos)
 {
@@ -644,7 +642,7 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
 
     Range r(s,e);
 
-    VioColl::iterator iter = bestHypos.find(r);
+    HypColl::iterator iter = bestHypos.find(r);
     if (iter == bestHypos.end()  || inner_product((*iter->second).featureVector,weights) + bleuWeight*sentenceLevelBackgroundBleu((*iter->second).bleuStats, backgroundBleu) < inner_product((*bestHypo).featureVector,weights) + bleuWeight * sentenceLevelBackgroundBleu((*bestHypo).bleuStats, backgroundBleu)) {
       bestHypos[r] = bestHypo;
       //bestHypo.featureVector.write(cerr, " "); cerr << endl;

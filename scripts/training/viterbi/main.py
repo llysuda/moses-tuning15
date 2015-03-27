@@ -110,11 +110,15 @@ def loadWeights(file):
     return names, weights
             
 
-def InitWeight(weights):
-    w = []
-    for i, points in enumerate(weights):
-        j = random.randint(0, len(points)-1)
-        w.append(points[j])
+def InitWeight(ifile):
+    f = open(ifile,'r');
+    #w = []
+    line = f.readline().strip()
+    w = [float(x) for x in line.split()]
+    #for i, points in enumerate(weights):
+    #    j = random.randint(0, len(points)-1)
+    #    w.append(points[j])
+    f.close()
     return w
 
 def Output(file, w, names):
@@ -171,10 +175,10 @@ if __name__ == '__main__':
     
     best_score = 0
     best_w = None
-    for loop in range(N):
-        logging.info('random init ' + str(loop))
+    for loop in range(1):
+        #logging.info('random init ' + str(loop))
         
-        init_w = InitWeight(weights)
+        init_w = InitWeight(ifile)
         
         Init_score = data.score(init_w, scorerInst)
         

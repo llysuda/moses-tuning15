@@ -458,70 +458,79 @@ void SAHypergraphHopeFearDecoder::HopeFear(
     break;
   }
 
-  for(HypColl::const_iterator)
+  for(HypColl::const_iterator iter = hopes.begin(); iter != hopes.end(); ++iter) {
 
-  HopeFearData hopeFear;
-  //modelFeatures, hopeFeatures and fearFeatures
-  hopeFear.modelFeatures = MiraFeatureVector(modelHypo.featureVector, num_dense_);
-  hopeFear.hopeFeatures = MiraFeatureVector(hopeHypo.featureVector, num_dense_);
-  hopeFear.fearFeatures = MiraFeatureVector(fearHypo.featureVector, num_dense_);
+    HopeFearData hopeFear;
 
-  //Need to know which are to be mapped to dense features!
+    const Range& range = iter->first;
+    const HgHypothesis& hopeHypo = *(iter->second);
+    const HgHypothesis& fearHypo = *(fears.find(range)->second);
+    const HgHypothesis& modelHypo = *(models.find(range)->second);
 
-  //Only C++11
-  //hopeFear->modelStats.assign(std::begin(modelHypo.bleuStats), std::end(modelHypo.bleuStats));
-  vector<ValType> fearStats(scorer_->NumberOfScores());
-  hopeFear->hopeStats.reserve(scorer_->NumberOfScores());
-  hopeFear->modelStats.reserve(scorer_->NumberOfScores());
-  for (size_t i = 0; i < fearStats.size(); ++i) {
-    hopeFear->modelStats.push_back(modelHypo.bleuStats[i]);
-    hopeFear->hopeStats.push_back(hopeHypo.bleuStats[i]);
+    //modelFeatures, hopeFeatures and fearFeatures
+    hopeFear.modelFeatures = MiraFeatureVector(modelHypo.featureVector, num_dense_);
+    hopeFear.hopeFeatures = MiraFeatureVector(hopeHypo.featureVector, num_dense_);
+    hopeFear.fearFeatures = MiraFeatureVector(fearHypo.featureVector, num_dense_);
 
-    fearStats[i] = fearHypo.bleuStats[i];
-  }
-  /*
-  cerr << "hope" << endl;;
-  for (size_t i = 0; i < hopeHypo.text.size(); ++i) {
-    cerr << hopeHypo.text[i]->first << " ";
-  }
-  cerr << endl;
-  for (size_t i = 0; i < fearStats.size(); ++i) {
-    cerr << hopeHypo.bleuStats[i] << " ";
-  }
-  cerr << endl;
-  cerr << "fear";
-  for (size_t i = 0; i < fearHypo.text.size(); ++i) {
-    cerr << fearHypo.text[i]->first << " ";
-  }
-  cerr << endl;
-  for (size_t i = 0; i < fearStats.size(); ++i) {
-    cerr  << fearHypo.bleuStats[i] << " ";
-  }
-  cerr << endl;
-  cerr << "model";
-  for (size_t i = 0; i < modelHypo.text.size(); ++i) {
-    cerr << modelHypo.text[i]->first << " ";
-  }
-  cerr << endl;
-  for (size_t i = 0; i < fearStats.size(); ++i) {
-    cerr << modelHypo.bleuStats[i] << " ";
-  }
-  cerr << endl;
-  */
-  hopeFear->hopeBleu = sentenceLevelBackgroundBleu(hopeFear->hopeStats, backgroundBleu);
-  hopeFear->fearBleu = sentenceLevelBackgroundBleu(fearStats, backgroundBleu);
+    //Need to know which are to be mapped to dense features!
 
-  //If fv and bleu stats are equal, then assume equal
-  hopeFear->hopeFearEqual = true; //(hopeFear->hopeBleu - hopeFear->fearBleu) >= 1e-8;
-  if (hopeFear->hopeFearEqual) {
+    //Only C++11
+    //hopeFear->modelStats.assign(std::begin(modelHypo.bleuStats), std::end(modelHypo.bleuStats));
+    vector<ValType> fearStats(scorer_->NumberOfScores());
+    hopeFear.hopeStats.reserve(scorer_->NumberOfScores());
+    hopeFear.modelStats.reserve(scorer_->NumberOfScores());
     for (size_t i = 0; i < fearStats.size(); ++i) {
-      if (fearStats[i] != hopeFear->hopeStats[i]) {
-        hopeFear->hopeFearEqual = false;
-        break;
+      hopeFear.modelStats.push_back(modelHypo.bleuStats[i]);
+      hopeFear.hopeStats.push_back(hopeHypo.bleuStats[i]);
+
+      fearStats[i] = fearHypo.bleuStats[i];
+    }
+    /*
+    cerr << "hope" << endl;;
+    for (size_t i = 0; i < hopeHypo.text.size(); ++i) {
+      cerr << hopeHypo.text[i]->first << " ";
+    }
+    cerr << endl;
+    for (size_t i = 0; i < fearStats.size(); ++i) {
+      cerr << hopeHypo.bleuStats[i] << " ";
+    }
+    cerr << endl;
+    cerr << "fear";
+    for (size_t i = 0; i < fearHypo.text.size(); ++i) {
+      cerr << fearHypo.text[i]->first << " ";
+    }
+    cerr << endl;
+    for (size_t i = 0; i < fearStats.size(); ++i) {
+      cerr  << fearHypo.bleuStats[i] << " ";
+    }
+    cerr << endl;
+    cerr << "model";
+    for (size_t i = 0; i < modelHypo.text.size(); ++i) {
+      cerr << modelHypo.text[i]->first << " ";
+    }
+    cerr << endl;
+    for (size_t i = 0; i < fearStats.size(); ++i) {
+      cerr << modelHypo.bleuStats[i] << " ";
+    }
+    cerr << endl;
+    */
+    hopeFear.hopeBleu = sentenceLevelBackgroundBleu(hopeFear.hopeStats, backgroundBleu);
+    hopeFear.fearBleu = sentenceLevelBackgroundBleu(fearStats, backgroundBleu);
+
+    //If fv and bleu stats are equal, then assume equal
+    hopeFear.hopeFearEqual = true; //(hopeFear->hopeBleu - hopeFear->fearBleu) >= 1e-8;
+    if (hopeFear.hopeFearEqual) {
+      for (size_t i = 0; i < fearStats.size(); ++i) {
+        if (fearStats[i] != hopeFear.hopeStats[i]) {
+          hopeFear.hopeFearEqual = false;
+          break;
+        }
       }
     }
+    hopeFear.hopeFearEqual = hopeFear.hopeFearEqual && (hopeFear.fearFeatures == hopeFear.hopeFeatures);
+
+    hopeFears.push_back(&hopeFear);
   }
-  hopeFear->hopeFearEqual = hopeFear->hopeFearEqual && (hopeFear->fearFeatures == hopeFear->hopeFeatures);
 
 }
 

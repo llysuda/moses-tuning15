@@ -79,6 +79,7 @@ int main(int argc, char** argv)
   bool safe_hope = false; // Model score cannot have more than BLEU_RATIO times more influence than BLEU
   size_t hgPruning = 50; //prune hypergraphs to have this many edges per reference word
   bool strict = false;
+  bool search_aware = false;
 
   // Command-line processing follows pro.cpp
   po::options_description desc("Allowed options");
@@ -106,6 +107,7 @@ int main(int argc, char** argv)
   ("safe-hope", po::value(&safe_hope)->zero_tokens()->default_value(false), "Mode score's influence on hope decoding is limited")
   ("hg-prune", po::value<size_t>(&hgPruning), "Prune hypergraphs to have this many edges per reference word")
   ("strict", po::value(&strict)->zero_tokens()->default_value(false), "only update when diff < 0")
+  ("search_aware", po::value(&strict)->zero_tokens()->default_value(false), "search aware kbmira, only for hypergraph")
   ;
 
   po::options_description cmdline_options;
@@ -233,7 +235,11 @@ int main(int argc, char** argv)
   if (type == "nbest") {
     decoder.reset(new NbestHopeFearDecoder(featureFiles, scoreFiles, streaming, no_shuffle, safe_hope, scorer.get()));
   } else if (type == "hypergraph") {
+    if (search_aware) {
+      decoder.reset(new SAHypergraphHopeFearDecoder(hgDir, referenceFiles, initDenseSize, streaming, no_shuffle, safe_hope, hgPruning, wv, scorer.get()));
+    } else {
     decoder.reset(new HypergraphHopeFearDecoder(hgDir, referenceFiles, initDenseSize, streaming, no_shuffle, safe_hope, hgPruning, wv, scorer.get()));
+    }
   } else {
     UTIL_THROW(util::Exception, "Unknown batch mira type: '" << type << "'");
   }

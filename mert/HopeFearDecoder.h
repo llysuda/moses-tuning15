@@ -143,7 +143,7 @@ public:
     const std::vector<ValType>& backgroundBleu,
     const MiraWeightVector& wv,
     HopeFearData* hopeFear
-  ){}
+  );
 
   void HopeFear(
       const std::vector<ValType>& backgroundBleu,

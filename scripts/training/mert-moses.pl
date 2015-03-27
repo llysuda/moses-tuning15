@@ -171,6 +171,7 @@ my $redType = "stat";
 
 my $viterbi = 0;
 my $norm = 1;
+my $sa_mira = 0;
 
 use Getopt::Long;
 GetOptions(
@@ -222,6 +223,7 @@ GetOptions(
   "historic-interpolation=f" => \$___HISTORIC_INTERPOLATION,
   "batch-mira" => \$___BATCH_MIRA,
   "hg-mira" => \$___HG_MIRA,
+  "search-aware" => \$sa_mira,
   "batch-mira-args=s" => \$batch_mira_args,
   "promix-training=s" => \$__PROMIX_TRAINING,
   "promix-table=s" => \@__PROMIX_TABLES,
@@ -364,6 +366,10 @@ my $mert_mert_cmd    = File::Spec->catfile($mertdir, "mert");
 my $mert_pro_cmd     = File::Spec->catfile($mertdir, "pro");
 my $mert_mira_cmd    = File::Spec->catfile($mertdir, "kbmira");
 my $mert_eval_cmd    = File::Spec->catfile($mertdir, "evaluator");
+
+if ($___HG_MIRA && $sa_mira) {
+    $mert_mira_cmd    = File::Spec->catfile($mertdir, "sakbmira");
+}
 
 if ($viterbi) {
     $mert_mert_cmd = File::Spec->catfile($SCRIPTS_ROOTDIR, "training", "viterbi", "main.py") ;

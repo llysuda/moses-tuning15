@@ -229,7 +229,7 @@ int main(int argc, char** argv)
   // Initialize background corpus
   vector<ValType> bg(scorer->NumberOfScores(), 1);
 
-  boost::scoped_ptr<HopeFearDecoder> decoder;
+  boost::scoped_ptr<SAHypergraphHopeFearDecoder> decoder;
   //if (type == "nbest") {
   //  decoder.reset(new NbestHopeFearDecoder(featureFiles, scoreFiles, streaming, no_shuffle, safe_hope, scorer.get()));
   //} else if (type == "hypergraph") {
@@ -249,41 +249,45 @@ int main(int argc, char** argv)
     ValType totalLoss = 0.0;
     size_t sentenceIndex = 0;
     for(decoder->reset(); !decoder->finished(); decoder->next()) {
-      HopeFearData hfd;
-      decoder->HopeFear(bg,wv,&hfd);
+      vector<HopeFearData*> hfds;
+      decoder->HopeFear(bg,wv,hfds);
 
-      // Update weights
-      if (!hfd.hopeFearEqual && hfd.hopeBleu  > hfd.fearBleu) {
-        // Vector difference
-        MiraFeatureVector diff = hfd.hopeFeatures - hfd.fearFeatures;
-        // Bleu difference
-        //assert(hfd.hopeBleu + 1e-8 >= hfd.fearBleu);
-        ValType delta = hfd.hopeBleu - hfd.fearBleu;
-        // Loss and update
-        ValType diff_score = wv.score(diff);
-        ValType loss = delta - diff_score;
-        if(verbose) {
-          cerr << "Updating sent " << sentenceIndex << endl;
-          cerr << "Wght: " << wv << endl;
-          cerr << "Hope: " << hfd.hopeFeatures << " BLEU:" << hfd.hopeBleu << " Score:" << wv.score(hfd.hopeFeatures) << endl;
-          cerr << "Fear: " << hfd.fearFeatures << " BLEU:" << hfd.fearBleu << " Score:" << wv.score(hfd.fearFeatures) << endl;
-          cerr << "Diff: " << diff << " BLEU:" << delta << " Score:" << diff_score << endl;
-          cerr << "Loss: " << loss <<  " Scale: " << 1 << endl;
-          cerr << endl;
-        }
-        if(loss > 0 && (!strict || (strict && diff_score < 0))) {
-          ValType eta = min(c, loss / diff.sqrNorm());
-          wv.update(diff,eta);
-          totalLoss+=loss;
-          iNumUpdates++;
-        }
-        // Update BLEU statistics
-        for(size_t k=0; k<bg.size(); k++) {
-          bg[k]*=decay;
-          if(model_bg)
-            bg[k]+=hfd.modelStats[k];
-          else
-            bg[k]+=hfd.hopeStats[k];
+      for(vector<HopeFearData*>::const_iterator iter = hfds.begin(); iter != hfds.end(); ++iter) {
+        const HopeFearData& hfd = **iter;
+
+        // Update weights
+        if (!hfd.hopeFearEqual && hfd.hopeBleu  > hfd.fearBleu) {
+          // Vector difference
+          MiraFeatureVector diff = hfd.hopeFeatures - hfd.fearFeatures;
+          // Bleu difference
+          //assert(hfd.hopeBleu + 1e-8 >= hfd.fearBleu);
+          ValType delta = hfd.hopeBleu - hfd.fearBleu;
+          // Loss and update
+          ValType diff_score = wv.score(diff);
+          ValType loss = delta - diff_score;
+          if(verbose) {
+            cerr << "Updating sent " << sentenceIndex << endl;
+            cerr << "Wght: " << wv << endl;
+            cerr << "Hope: " << hfd.hopeFeatures << " BLEU:" << hfd.hopeBleu << " Score:" << wv.score(hfd.hopeFeatures) << endl;
+            cerr << "Fear: " << hfd.fearFeatures << " BLEU:" << hfd.fearBleu << " Score:" << wv.score(hfd.fearFeatures) << endl;
+            cerr << "Diff: " << diff << " BLEU:" << delta << " Score:" << diff_score << endl;
+            cerr << "Loss: " << loss <<  " Scale: " << 1 << endl;
+            cerr << endl;
+          }
+          if(loss > 0 && (!strict || (strict && diff_score < 0))) {
+            ValType eta = min(c, loss / diff.sqrNorm());
+            wv.update(diff,eta);
+            totalLoss+=loss;
+            iNumUpdates++;
+          }
+          // Update BLEU statistics
+          for(size_t k=0; k<bg.size(); k++) {
+            bg[k]*=decay;
+            if(model_bg)
+              bg[k]+=hfd.modelStats[k];
+            else
+              bg[k]+=hfd.hopeStats[k];
+          }
         }
       }
       iNumExamples++;

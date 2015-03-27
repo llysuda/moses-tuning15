@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include <valarray>
 #include <vector>
+#include <map>
 
 #include <boost/unordered_set.hpp>
 
@@ -120,8 +121,11 @@ struct HgHypothesis {
   std::vector<FeatureStatsType> bleuStats;
 };
 
-void Viterbi(const Graph& graph, const SparseVector& weights, float bleuWeight, const ReferenceSet& references, size_t sentenceId, const std::vector<FeatureStatsType>& backgroundBleu, HgHypothesis* bestHypo);
+typedef std::pair<size_t, size_t> Range ;
+typedef std::map<Range, boost::shared_ptr<HgHypothesis> > HypColl;
 
+void Viterbi(const Graph& graph, const SparseVector& weights, float bleuWeight, const ReferenceSet& references, size_t sentenceId, const std::vector<FeatureStatsType>& backgroundBleu, HgHypothesis* bestHypo);
+void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWeight, const ReferenceSet& references , size_t sentenceId, const std::vector<FeatureStatsType>& backgroundBleu,  HypColl& bestHypos);
 };
 
 #endif
