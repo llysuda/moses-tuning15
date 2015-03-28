@@ -657,6 +657,7 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
     }
   }
 
+  map<Range, size_t> rangeVi;
   //    cerr  << "backpointer[" << vi << "] = (" << backPointers[vi].first << "," << backPointers[vi].second << ")" << endl;
   for (size_t vi = 0; vi < graph.VertexSize(); ++vi) {
     const Vertex& vertex = graph.GetVertex(vi);
@@ -696,8 +697,6 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
     */
 
     //
-
-    ExtendBestHypothesis(vi, graph, backPointers, forwardPointers, edgeHeads, bestHypo.get());
 
     /*
     cerr << "END: " << endl;
@@ -739,8 +738,16 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
     HypColl::iterator iter = bestHypos.find(r);
     if (iter == bestHypos.end()  || inner_product((*iter->second).featureVector,weights) + bleuWeight*sentenceLevelBackgroundBleu((*iter->second).bleuStats, backgroundBleu) < inner_product((*bestHypo).featureVector,weights) + bleuWeight * sentenceLevelBackgroundBleu((*bestHypo).bleuStats, backgroundBleu)) {
       bestHypos[r] = bestHypo;
+      rangeVi[r] = vi;
       //bestHypo.featureVector.write(cerr, " "); cerr << endl;
     }
+  }
+
+  for(HypColl::iterator iter = bestHypos.begin(); iter != bestHypos.end(); iter++) {
+    const Range& range = iter->first;
+    //HgHypothesis* hyp = iter->second.get();
+    size_t vi = rangeVi.find(range)->second;
+    ExtendBestHypothesis(vi, graph, backPointers, forwardPointers, edgeHeads, iter->second.get());
   }
 
   //exit(1);
