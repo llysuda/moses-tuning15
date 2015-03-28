@@ -493,27 +493,71 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
 
   //std::set<pair<size_t, size_t> > exists;
 
-  map<const Edge*, size_t> edgeHeads;
-  vector<vector<const Edge*> > outgoing(graph.VertexSize());
-  ForwardPointer initf(NULL,kMinScore);
-  vector<ForwardPointer> forwardPointers(graph.VertexSize(),initf);
+    map<const Edge*, size_t> edgeHeads;
+    vector<FeatureStatsType> vertexBackwardScores(graph.VertexSize(), kMinScore);
+    vector<vector<const Edge*> > outgoing(graph.VertexSize());
 
-  for (size_t vi = 0; vi < graph.VertexSize(); ++vi) {
-    FeatureStatsType winnerScore = kMinScore;
-    const Vertex& vertex = graph.GetVertex(vi);
-    const vector<const Edge*>& incoming = vertex.GetIncoming();
-    if (!incoming.size()) {
-      // nothing
-    } else {
-      for (size_t ei = 0; ei < incoming.size(); ++ei) {
-        edgeHeads[incoming[ei]] = vi;
-        for (size_t i = 0; i < incoming[ei]->Children().size(); ++i) {
-          size_t childId = incoming[ei]->Children()[i];
-          outgoing[childId].push_back(incoming[ei]);
+    //Compute backward scores
+    for (size_t vi = 0; vi < graph.VertexSize(); ++vi) {
+      // cerr << "Vertex " << vi << endl;
+      const Vertex& vertex = graph.GetVertex(vi);
+      const vector<const Edge*>& incoming = vertex.GetIncoming();
+      if (!incoming.size()) {
+        vertexBackwardScores[vi] = 0;
+      } else {
+        for (size_t ei = 0; ei < incoming.size(); ++ei) {
+          //cerr << "Edge " << edgeIds[incoming[ei]] << endl;
+          edgeHeads[incoming[ei]]= vi;
+          FeatureStatsType incomingScore = incoming[ei]->GetScore(weights);
+          for (size_t i = 0; i < incoming[ei]->Children().size(); ++i) {
+            //cerr << "\tChild " << incoming[ei]->Children()[i] << endl;
+            size_t childId = incoming[ei]->Children()[i];
+            UTIL_THROW_IF(vertexBackwardScores[childId] == kMinScore,
+                          HypergraphException, "Graph was not topologically sorted. curr=" << vi << " prev=" << childId);
+            outgoing[childId].push_back(incoming[ei]);
+            incomingScore += vertexBackwardScores[childId];
+          }
+          //cerr << "Backward score: " << incomingScore << endl;
+          if (incomingScore > vertexBackwardScores[vi]) vertexBackwardScores[vi] = incomingScore;
         }
       }
     }
-  }
+
+    //Compute forward scores
+    ForwardPointer initfp(NULL,kMinScore);
+    vector<ForwardPointer> forwardPointers(graph.VertexSize(),initfp);
+
+    for (size_t i = 1; i <= graph.VertexSize(); ++i) {
+      size_t vi = graph.VertexSize() - i;
+      //cerr << "Vertex " << vi << endl;
+      if (!outgoing[vi].size()) {
+        forwardPointers[vi].first = NULL;
+        forwardPointers[vi].second = 0;
+      } else {
+        for (size_t ei = 0; ei < outgoing[vi].size(); ++ei) {
+          //cerr << "Edge " << edgeIds[outgoing[vi][ei]] << endl;
+          FeatureStatsType outgoingScore = 0;
+          //add score of head
+          outgoingScore += forwardPointers[edgeHeads[outgoing[vi][ei]]].second;
+          //sum scores of siblings
+          for (size_t i = 0; i < outgoing[vi][ei]->Children().size(); ++i) {
+            size_t siblingId = outgoing[vi][ei]->Children()[i];
+            if (siblingId != vi) {
+              //cerr << "\tSibling " << siblingId << endl;
+              outgoingScore += vertexBackwardScores[siblingId];
+            }
+          }
+          outgoingScore += outgoing[vi][ei]->GetScore(weights);
+          if (outgoingScore > forwardPointers[vi].second) {
+            forwardPointers[vi].first = outgoing[vi][ei];
+            forwardPointers[vi].second = outgoingScore;
+          }
+          //cerr << "Vertex " << vi << " forward score " << outgoingScore << endl;
+        }
+      }
+    }
+
+  map<Range, size_t> rangeVi;
 
   BackPointer init(NULL,kMinScore);
   vector<BackPointer> backPointers(graph.VertexSize(),init);
@@ -605,6 +649,21 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
           backPointers[vi].first = incoming[ei];
           backPointers[vi].second = incomingScore;
           winnerStats = bleuStats;
+
+          boost::shared_ptr<HgHypothesis> bestHypo (new HgHypothesis());
+          GetBestHypothesis(vi, graph, backPointers, bestHypo.get());
+
+          size_t s = vertex.startPos;
+          size_t e = vertex.endPos;
+
+          Range r(s,e);
+
+          //HypColl::iterator iter = bestHypos.find(r);
+          //if (iter == bestHypos.end()  || inner_product((*iter->second).featureVector,weights) + bleuWeight*sentenceLevelBackgroundBleu((*iter->second).bleuStats, backgroundBleu) < inner_product((*bestHypo).featureVector,weights) + bleuWeight * sentenceLevelBackgroundBleu((*bestHypo).bleuStats, backgroundBleu)) {
+          bestHypos[r] = bestHypo;
+          rangeVi[r] = vi;
+            //bestHypo.featureVector.write(cerr, " "); cerr << endl;
+          //}
         }
       }
       //update with winner
@@ -618,7 +677,7 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
   }
 
 
-  for (size_t i = 1; i <= graph.VertexSize(); ++i) {
+  /*for (size_t i = 1; i <= graph.VertexSize(); ++i) {
     size_t vi = graph.VertexSize() - i;
     //cerr << "Vertex " << vi << endl;
 
@@ -655,16 +714,16 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
         //cerr << "Vertex " << vi << " forward score " << outgoingScore << endl;
       }
     }
-  }
+  }*/
 
-  map<Range, size_t> rangeVi;
+
   //    cerr  << "backpointer[" << vi << "] = (" << backPointers[vi].first << "," << backPointers[vi].second << ")" << endl;
-  for (size_t vi = 0; vi < graph.VertexSize(); ++vi) {
+/*  for (size_t vi = 0; vi < graph.VertexSize(); ++vi) {
     const Vertex& vertex = graph.GetVertex(vi);
 
     boost::shared_ptr<HgHypothesis> bestHypo (new HgHypothesis());
     GetBestHypothesis(vi, graph, backPointers, bestHypo.get());
-
+*/
     // add text from future
     //TODO
     /*cerr << "BEFORE: " << endl;
@@ -696,7 +755,7 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
     (*bestHypo).bleuStats[kBleuNgramOrder*2] = references.Length(sentenceId);
     */
 
-    //
+    //ExtendBestHypothesis(vi, graph, backPointers, forwardPointers, edgeHeads, bestHypo.get());
 
     /*
     cerr << "END: " << endl;
@@ -708,7 +767,7 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
     */
 
     // update BLEU
-    (*bestHypo).bleuStats.resize(kBleuNgramOrder*2+1);
+/*    (*bestHypo).bleuStats.resize(kBleuNgramOrder*2+1);
     NgramCounter counts;
     list<WordVec> openNgrams;
     for (size_t i = 0; i < (*bestHypo).text.size(); ++i) {
@@ -742,12 +801,35 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
       //bestHypo.featureVector.write(cerr, " "); cerr << endl;
     }
   }
+*/
 
   for(HypColl::iterator iter = bestHypos.begin(); iter != bestHypos.end(); iter++) {
     const Range& range = iter->first;
-    //HgHypothesis* hyp = iter->second.get();
+    HgHypothesis* bestHypo = iter->second.get();
     size_t vi = rangeVi.find(range)->second;
-    ExtendBestHypothesis(vi, graph, backPointers, forwardPointers, edgeHeads, iter->second.get());
+
+    ExtendBestHypothesis(vi, graph, backPointers, forwardPointers, edgeHeads, bestHypo);
+
+    (*bestHypo).bleuStats.resize(kBleuNgramOrder*2+1);
+    NgramCounter counts;
+    list<WordVec> openNgrams;
+    for (size_t i = 0; i < (*bestHypo).text.size(); ++i) {
+      const Vocab::Entry* entry = (*bestHypo).text[i];
+      if (graph.IsBoundary(entry)) continue;
+      openNgrams.push_front(WordVec());
+      for (list<WordVec>::iterator k = openNgrams.begin(); k != openNgrams.end();  ++k) {
+        k->push_back(entry);
+        ++counts[*k];
+      }
+      if (openNgrams.size() >=  kBleuNgramOrder) openNgrams.pop_back();
+    }
+    for (NgramCounter::const_iterator ngi = counts.begin(); ngi != counts.end(); ++ngi) {
+      size_t order = ngi->first.size();
+      size_t count = ngi->second;
+      (*bestHypo).bleuStats[(order-1)*2 + 1] += count;
+      (*bestHypo).bleuStats[(order-1) * 2] += min(count, references.NgramMatches(sentenceId,ngi->first,true));
+    }
+    (*bestHypo).bleuStats[kBleuNgramOrder*2] = references.Length(sentenceId);
   }
 
   //exit(1);
