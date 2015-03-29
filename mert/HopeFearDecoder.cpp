@@ -542,7 +542,7 @@ void SAHypergraphHopeFearDecoder::HopeFear(
     hopeFears.push_back(hopeFear);
 
     // verbose
-    /*cerr << sentenceId << " Range: " << range.first << " " << range.second << endl;
+/*    cerr << sentenceId << " Range: " << range.first << " " << range.second << endl;
     cerr << "hope: ";
     for(size_t ti = 0; ti < hopeHypo.text.size(); ++ti) {
       const Vocab::Entry* entry = hopeHypo.text[ti];
@@ -563,8 +563,8 @@ void SAHypergraphHopeFearDecoder::HopeFear(
       cerr << (*entry).first << " ";
     }
     cerr << endl << "Features: " << hopeFear.fearFeatures;
-    cerr << endl;*/
-    // verbose
+    cerr << endl;
+*/    // verbose
   }
 
 }

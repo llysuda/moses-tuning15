@@ -652,7 +652,7 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
           boost::shared_ptr<HgHypothesis> bestHypo (new HgHypothesis());
           GetBestHypothesis(vi, graph, backPointers, bestHypo.get());
 
-          (*bestHypo).bleuStats.resize(kBleuNgramOrder*2+1);
+          /*(*bestHypo).bleuStats.resize(kBleuNgramOrder*2+1);
           NgramCounter counts;
           list<WordVec> openNgrams;
           for (size_t i = 0; i < (*bestHypo).text.size(); ++i) {
@@ -672,7 +672,7 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
             (*bestHypo).bleuStats[(order-1) * 2] += min(count, references.NgramMatches(sentenceId,ngi->first,true));
           }
           (*bestHypo).bleuStats[kBleuNgramOrder*2] = references.Length(sentenceId);
-
+*/
           size_t s = vertex.startPos;
           size_t e = vertex.endPos;
 
@@ -763,91 +763,6 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
   }
 
 
-  //    cerr  << "backpointer[" << vi << "] = (" << backPointers[vi].first << "," << backPointers[vi].second << ")" << endl;
-/*  for (size_t vi = 0; vi < graph.VertexSize(); ++vi) {
-    const Vertex& vertex = graph.GetVertex(vi);
-
-    boost::shared_ptr<HgHypothesis> bestHypo (new HgHypothesis());
-    GetBestHypothesis(vi, graph, backPointers, bestHypo.get());
-*/
-    // add text from future
-    //TODO
-    /*cerr << "BEFORE: " << endl;
-    for(size_t ti = 0; ti < (*bestHypo).text.size(); ++ti) {
-      const Vocab::Entry* entry = (*bestHypo).text[ti];
-      cerr << (*entry).first << " ";
-    }
-    cerr << endl;*/
-
-    /*(*bestHypo).bleuStats.resize(kBleuNgramOrder*2+1);
-    NgramCounter counts;
-    list<WordVec> openNgrams;
-    for (size_t i = 0; i < (*bestHypo).text.size(); ++i) {
-      const Vocab::Entry* entry = (*bestHypo).text[i];
-      if (graph.IsBoundary(entry)) continue;
-      openNgrams.push_front(WordVec());
-      for (list<WordVec>::iterator k = openNgrams.begin(); k != openNgrams.end();  ++k) {
-        k->push_back(entry);
-        ++counts[*k];
-      }
-      if (openNgrams.size() >=  kBleuNgramOrder) openNgrams.pop_back();
-    }
-    for (NgramCounter::const_iterator ngi = counts.begin(); ngi != counts.end(); ++ngi) {
-      size_t order = ngi->first.size();
-      size_t count = ngi->second;
-      (*bestHypo).bleuStats[(order-1)*2 + 1] += count;
-      (*bestHypo).bleuStats[(order-1) * 2] += min(count, references.NgramMatches(sentenceId,ngi->first,true));
-    }
-    (*bestHypo).bleuStats[kBleuNgramOrder*2] = references.Length(sentenceId);
-    */
-
-    //ExtendBestHypothesis(vi, graph, backPointers, forwardPointers, edgeHeads, bestHypo.get());
-
-    /*
-    cerr << "END: " << endl;
-    for(size_t ti = 0; ti < (*bestHypo).text.size(); ++ti) {
-      const Vocab::Entry* entry = (*bestHypo).text[ti];
-      cerr << (*entry).first << " ";
-    }
-    cerr << endl;
-    */
-
-    // update BLEU
-/*    (*bestHypo).bleuStats.resize(kBleuNgramOrder*2+1);
-    NgramCounter counts;
-    list<WordVec> openNgrams;
-    for (size_t i = 0; i < (*bestHypo).text.size(); ++i) {
-      const Vocab::Entry* entry = (*bestHypo).text[i];
-      if (graph.IsBoundary(entry)) continue;
-      openNgrams.push_front(WordVec());
-      for (list<WordVec>::iterator k = openNgrams.begin(); k != openNgrams.end();  ++k) {
-        k->push_back(entry);
-        ++counts[*k];
-      }
-      if (openNgrams.size() >=  kBleuNgramOrder) openNgrams.pop_back();
-    }
-    for (NgramCounter::const_iterator ngi = counts.begin(); ngi != counts.end(); ++ngi) {
-      size_t order = ngi->first.size();
-      size_t count = ngi->second;
-      (*bestHypo).bleuStats[(order-1)*2 + 1] += count;
-      (*bestHypo).bleuStats[(order-1) * 2] += min(count, references.NgramMatches(sentenceId,ngi->first,true));
-    }
-    (*bestHypo).bleuStats[kBleuNgramOrder*2] = references.Length(sentenceId);
-
-    //
-    size_t s = vertex.startPos;
-    size_t e = vertex.endPos;
-
-    Range r(s,e);
-
-    HypColl::iterator iter = bestHypos.find(r);
-    if (iter == bestHypos.end()  || inner_product((*iter->second).featureVector,weights) + bleuWeight*sentenceLevelBackgroundBleu((*iter->second).bleuStats, backgroundBleu) < inner_product((*bestHypo).featureVector,weights) + bleuWeight * sentenceLevelBackgroundBleu((*bestHypo).bleuStats, backgroundBleu)) {
-      bestHypos[r] = bestHypo;
-      rangeVi[r] = vi;
-      //bestHypo.featureVector.write(cerr, " "); cerr << endl;
-    }
-  }
-*/
 
   for(HypColl::iterator iter = bestHypos.begin(); iter != bestHypos.end(); iter++) {
     const Range& range = iter->first;
