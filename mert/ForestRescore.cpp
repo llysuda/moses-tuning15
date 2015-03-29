@@ -498,7 +498,7 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
     vector<vector<const Edge*> > outgoing(graph.VertexSize());
 
     //Compute backward scores
-    /*for (size_t vi = 0; vi < graph.VertexSize(); ++vi) {
+    for (size_t vi = 0; vi < graph.VertexSize(); ++vi) {
       // cerr << "Vertex " << vi << endl;
       const Vertex& vertex = graph.GetVertex(vi);
       const vector<const Edge*>& incoming = vertex.GetIncoming();
@@ -521,13 +521,13 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
           if (incomingScore > vertexBackwardScores[vi]) vertexBackwardScores[vi] = incomingScore;
         }
       }
-    }*/
+    }
 
     //Compute forward scores
     ForwardPointer initfp(NULL,kMinScore);
     vector<ForwardPointer> forwardPointers(graph.VertexSize(),initfp);
 
-    /*for (size_t i = 1; i <= graph.VertexSize(); ++i) {
+    for (size_t i = 1; i <= graph.VertexSize(); ++i) {
       size_t vi = graph.VertexSize() - i;
       //cerr << "Vertex " << vi << endl;
       if (!outgoing[vi].size()) {
@@ -555,7 +555,7 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
           //cerr << "Vertex " << vi << " forward score " << outgoingScore << endl;
         }
       }
-    }*/
+    }
 
   map<Range, size_t> rangeVi;
 
@@ -697,7 +697,7 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
   }
 
   //HgBleuScorer bleuScorer2(references, graph, sentenceId, backgroundBleu);
-  for (size_t i = 1; i <= graph.VertexSize(); ++i) {
+/*  for (size_t i = 1; i <= graph.VertexSize(); ++i) {
     size_t vi = graph.VertexSize() - i;
     FeatureStatsType winnerScore = kMinScore;
     const Vertex& vertex = graph.GetVertex(vi);
@@ -729,25 +729,7 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
         //cerr << outgoing[vi][ei]->GetScore(weights) << endl;
         //cerr << outgoingScore << endl;
         FeatureStatsType totalScore = outgoingScore;
-        /*vector<FeatureStatsType> bleuStats(kBleuNgramOrder*2+1);
-        if (bleuWeight) {
-          FeatureStatsType bleuScore =
-          bleuScorer.Score(*(outgoing[vi][ei]), vertex, bleuStats);
-          if (isnan(bleuScore)) {
-            cerr << "WARN: bleu score undefined" << endl;
-            cerr << "\tVertex id : " << vi << endl;
-            cerr << "\tBleu stats : ";
-            for (size_t i = 0; i < bleuStats.size(); ++i) {
-              cerr << bleuStats[i] << ",";
-            }
-            cerr << endl;
-            bleuScore = 0;
-          }
-          //UTIL_THROW_IF(isnan(bleuScore), util::Exception, "Bleu score undefined, smoothing problem?");
-          totalScore += bleuWeight * bleuScore;
-          //  cerr << bleuScore << " Total: " << incomingScore << endl << endl;
-          //cerr << "is " << incomingScore << " bs " << bleuScore << endl;
-        }*/
+
         if (totalScore > winnerScore) {
           forwardPointers[vi].first = outgoing[vi][ei];
           forwardPointers[vi].second = outgoingScore;
@@ -761,7 +743,7 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
       //}
     }
   }
-
+*/
 
 
   for(HypColl::iterator iter = bestHypos.begin(); iter != bestHypos.end(); iter++) {
