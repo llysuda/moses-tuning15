@@ -806,6 +806,9 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
   for(HypColl::iterator iter = bestHypos.begin(); iter != bestHypos.end(); iter++) {
     const Range& range = iter->first;
     HgHypothesis* bestHypo = iter->second.get();
+
+    assert(rangeVi.find(range) != rangeVi.end());
+
     size_t vi = rangeVi.find(range)->second;
 
     ExtendBestHypothesis(vi, graph, backPointers, forwardPointers, edgeHeads, bestHypo);
