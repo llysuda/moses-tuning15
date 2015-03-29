@@ -462,7 +462,7 @@ void SAHypergraphHopeFearDecoder::HopeFear(
 
     const Range& range = iter->first;
 
-    if (range.second - range.first < 1)
+    if (range.second - range.first < 2)
       continue;
 
     assert(fears.find(range) != fears.end());
@@ -490,10 +490,10 @@ void SAHypergraphHopeFearDecoder::HopeFear(
     hopeFear.hopeStats.reserve(scorer_->NumberOfScores());
     hopeFear.modelStats.reserve(scorer_->NumberOfScores());
     for (size_t i = 0; i < fearStats.size(); ++i) {
-      hopeFear.modelStats.push_back(modelHypo.bleuStats[i]);
-      hopeFear.hopeStats.push_back(hopeHypo.bleuStats[i]);
+      hopeFear.modelStats.push_back(modelHypo.bleuStatsPot[i]);
+      hopeFear.hopeStats.push_back(hopeHypo.bleuStatsPot[i]);
 
-      fearStats[i] = fearHypo.bleuStats[i];
+      fearStats[i] = fearHypo.bleuStatsPot[i];
     }
     /*
     cerr << "hope" << endl;;
@@ -524,8 +524,8 @@ void SAHypergraphHopeFearDecoder::HopeFear(
     }
     cerr << endl;
     */
-    hopeFear.hopeBleu = sentenceLevelBackgroundBleu(hopeFear.hopeStats, backgroundBleu);
-    hopeFear.fearBleu = sentenceLevelBackgroundBleu(fearStats, backgroundBleu);
+    hopeFear.hopeBleu = sentenceLevelBackgroundBleu(hopeHypo.bleuStatsPot, backgroundBleu);
+    hopeFear.fearBleu = sentenceLevelBackgroundBleu(fearHypo.bleuStatsPot, backgroundBleu);
 
     //If fv and bleu stats are equal, then assume equal
     hopeFear.hopeFearEqual = true; //(hopeFear->hopeBleu - hopeFear->fearBleu) >= 1e-8;
