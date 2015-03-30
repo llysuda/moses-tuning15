@@ -465,8 +465,9 @@ void SAHypergraphHopeFearDecoder::HopeFear(
     if (range.second - range.first < 2)
       continue;
 
-    assert(fears.find(range) != fears.end());
-    assert(models.find(range) != models.end());
+    if (fears.find(range) == fears.end() || models.find(range) == models.end()) {
+      continue;
+    }
 
     const HgHypothesis& hopeHypo = *(iter->second.get());
     const HgHypothesis& fearHypo = *(fears.find(range)->second.get());
