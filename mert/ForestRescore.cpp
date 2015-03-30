@@ -510,8 +510,8 @@ bool ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
     size_t s = vertex.startPos;
     size_t e = vertex.endPos;
 
-    //if (e > range.second)
-    //  continue;
+    if (e > range.second)
+      continue;
 
     Range r(s,e);
 
@@ -668,12 +668,6 @@ bool ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
 
     // extend
     ExtendBestHypothesis(vi, graph, backPointers, forwardPointers, edgeHeads, bestHypo);
-
-    /*for(size_t ti = 0; ti < bestHypo->text.size(); ++ti) {
-      const Vocab::Entry* entry = bestHypo->text[ti];
-      cerr << (*entry).first << " ";
-    }
-    cerr << endl;*/
 
     (*bestHypo).bleuStatsPot.resize(kBleuNgramOrder*2+1);
     NgramCounter counts2;
