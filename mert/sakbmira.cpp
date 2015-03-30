@@ -249,11 +249,16 @@ int main(int argc, char** argv)
     ValType totalLoss = 0.0;
     size_t sentenceIndex = 0;
     for(decoder->reset(); !decoder->finished(); decoder->next()) {
-      vector<HopeFearData> hfds;
-      decoder->HopeFear(bg,wv,hfds);
+      //vector<HopeFearData> hfds;
+      //decoder->HopeFear(bg,wv,hfds);
+      decoder->NewSent();
 
-      for(vector<HopeFearData>::const_iterator iter = hfds.begin(); iter != hfds.end(); ++iter) {
-        const HopeFearData& hfd = *iter;
+      while (decoder->HasNext()) {
+        HopeFearData hfd;
+        decoder->HopeFear(bg,wv,&hfd);
+
+      //for(vector<HopeFearData>::const_iterator iter = hfds.begin(); iter != hfds.end(); ++iter) {
+      //  const HopeFearData& hfd = *iter;
 
         //cerr << "HFD:B" << endl;
         //cerr << "modelFeatures: " << hfd.modelFeatures << endl;

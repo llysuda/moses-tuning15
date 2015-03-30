@@ -483,19 +483,132 @@ static void ExtendBestHypothesis(size_t vertexId, const Graph& graph, const vect
 }
 
 
-void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWeight, const ReferenceSet& references , size_t sentenceId, const std::vector<FeatureStatsType>& backgroundBleu,  HypColl& bestHypos)
+bool ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWeight, const ReferenceSet& references , size_t sentenceId, const std::vector<FeatureStatsType>& backgroundBleu,  HgHypothesis* bestHypo, const Range& range)
 {
   size_t size = graph.GetVertex(graph.VertexSize()-1).SourceCovered();
-  //bestHypos.resize(size);
-  //for(size_t i = 0; i < size; i++) {
-  //  bestHypos[i].resize(size-i, HgHypothesis());
-  //}
-
-  //std::set<pair<size_t, size_t> > exists;
 
     map<const Edge*, size_t> edgeHeads;
     vector<FeatureStatsType> vertexBackwardScores(graph.VertexSize(), kMinScore);
     vector<vector<const Edge*> > outgoing(graph.VertexSize());
+    //Compute forward scores
+    ForwardPointer initfp(NULL,kMinScore);
+    vector<ForwardPointer> forwardPointers(graph.VertexSize(),initfp);
+
+
+  map<Range, size_t> rangeVi;
+
+  BackPointer init(NULL,kMinScore);
+  vector<BackPointer> backPointers(graph.VertexSize(),init);
+  HgBleuScorer bleuScorer(references, graph, sentenceId, backgroundBleu);
+  vector<FeatureStatsType> winnerStats(kBleuNgramOrder*2+1);
+  for (size_t vi = 0; vi < graph.VertexSize(); ++vi) {
+//    cerr << "vertex id " << vi <<  endl;
+    FeatureStatsType winnerScore = kMinScore;
+    const Vertex& vertex = graph.GetVertex(vi);
+    const vector<const Edge*>& incoming = vertex.GetIncoming();
+
+    size_t s = vertex.startPos;
+    size_t e = vertex.endPos;
+
+    //if (e > range.second)
+    //  continue;
+
+    Range r(s,e);
+
+    if (!incoming.size()) {
+      //UTIL_THROW(HypergraphException, "Vertex " << vi << " has no incoming edges");
+      //If no incoming edges, vertex is a dead end
+      backPointers[vi].first = NULL;
+      backPointers[vi].second = kMinScore;
+    } else {
+      //cerr << "\nVertex: " << vi << endl;
+      for (size_t ei = 0; ei < incoming.size(); ++ei) {
+
+        //edgeHeads[incoming[ei]] = vi;
+
+        //cerr << "edge id " << ei << endl;
+        FeatureStatsType incomingScore = incoming[ei]->GetScore(weights);
+        for (size_t i = 0; i < incoming[ei]->Children().size(); ++i) {
+          size_t childId = incoming[ei]->Children()[i];
+          //UTIL_THROW_IF(backPointers[childId].second == kMinScore,
+          //  HypergraphException, "Graph was not topologically sorted. curr=" << vi << " prev=" << childId);
+          incomingScore = max(incomingScore + backPointers[childId].second, kMinScore);
+          //outgoing[childId].push_back(incoming[ei]);
+        }
+        vector<FeatureStatsType> bleuStats(kBleuNgramOrder*2+1);
+        // cerr << "Score: " << incomingScore << " Bleu: ";
+        // if (incomingScore > nonbleuscore) {nonbleuscore = incomingScore; nonbleuid = ei;}
+        FeatureStatsType totalScore = incomingScore;
+        if (bleuWeight) {
+
+          FeatureStatsType bleuScore =
+          bleuScorer.Score(*(incoming[ei]), vertex, bleuStats);
+          if (isnan(bleuScore)) {
+            cerr << "WARN: bleu score undefined" << endl;
+            cerr << "\tVertex id : " << vi << endl;
+            cerr << "\tBleu stats : ";
+            for (size_t i = 0; i < bleuStats.size(); ++i) {
+              cerr << bleuStats[i] << ",";
+            }
+            cerr << endl;
+            bleuScore = 0;
+          }
+          //UTIL_THROW_IF(isnan(bleuScore), util::Exception, "Bleu score undefined, smoothing problem?");
+          totalScore += bleuWeight * bleuScore;
+          //  cerr << bleuScore << " Total: " << incomingScore << endl << endl;
+          //cerr << "is " << incomingScore << " bs " << bleuScore << endl;
+        }
+        if (totalScore >= winnerScore) {
+          //We only store the feature score (not the bleu score) with the vertex,
+          //since the bleu score is always cumulative, ie from counts for the whole span.
+          winnerScore = totalScore;
+          backPointers[vi].first = incoming[ei];
+          backPointers[vi].second = incomingScore;
+          winnerStats = bleuStats;
+
+          rangeVi[r] = vi;
+        }
+      }
+      //update with winner
+      //if (bleuWeight) {
+      //TODO: Not sure if we need this when computing max-model solution
+      if (backPointers[vi].first) {
+        bleuScorer.UpdateState(*(backPointers[vi].first), vi, winnerStats);
+      }
+
+    }
+  }
+
+
+    if (rangeVi.find(range) == rangeVi.end())
+      return false;
+
+    size_t vi = rangeVi.find(range)->second;
+    GetBestHypothesis(vi, graph, backPointers, bestHypo);
+
+    (*bestHypo).bleuStats.resize(kBleuNgramOrder*2+1);
+    NgramCounter counts;
+    list<WordVec> openNgrams;
+    for (size_t i = 0; i < (*bestHypo).text.size(); ++i) {
+      const Vocab::Entry* entry = (*bestHypo).text[i];
+      if (graph.IsBoundary(entry)) continue;
+      openNgrams.push_front(WordVec());
+      for (list<WordVec>::iterator k = openNgrams.begin(); k != openNgrams.end();  ++k) {
+        k->push_back(entry);
+        ++counts[*k];
+      }
+      if (openNgrams.size() >=  kBleuNgramOrder) openNgrams.pop_back();
+    }
+    for (NgramCounter::const_iterator ngi = counts.begin(); ngi != counts.end(); ++ngi) {
+      size_t order = ngi->first.size();
+      size_t count = ngi->second;
+      (*bestHypo).bleuStats[(order-1)*2 + 1] += count;
+      (*bestHypo).bleuStats[(order-1) * 2] += min(count, references.NgramMatches(sentenceId,ngi->first,true));
+    }
+    (*bestHypo).bleuStats[kBleuNgramOrder*2] = references.Length(sentenceId);
+
+
+    // for extend
 
     //Compute backward scores
     for (size_t vi = 0; vi < graph.VertexSize(); ++vi) {
@@ -522,10 +635,6 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
         }
       }
     }
-
-    //Compute forward scores
-    ForwardPointer initfp(NULL,kMinScore);
-    vector<ForwardPointer> forwardPointers(graph.VertexSize(),initfp);
 
     for (size_t i = 1; i <= graph.VertexSize(); ++i) {
       size_t vi = graph.VertexSize() - i;
@@ -557,228 +666,39 @@ void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
       }
     }
 
-  map<Range, size_t> rangeVi;
-
-  BackPointer init(NULL,kMinScore);
-  vector<BackPointer> backPointers(graph.VertexSize(),init);
-  HgBleuScorer bleuScorer(references, graph, sentenceId, backgroundBleu);
-  vector<FeatureStatsType> winnerStats(kBleuNgramOrder*2+1);
-  for (size_t vi = 0; vi < graph.VertexSize(); ++vi) {
-//    cerr << "vertex id " << vi <<  endl;
-    FeatureStatsType winnerScore = kMinScore;
-    const Vertex& vertex = graph.GetVertex(vi);
-    const vector<const Edge*>& incoming = vertex.GetIncoming();
-    if (!incoming.size()) {
-      //UTIL_THROW(HypergraphException, "Vertex " << vi << " has no incoming edges");
-      //If no incoming edges, vertex is a dead end
-      backPointers[vi].first = NULL;
-      backPointers[vi].second = kMinScore;
-    } else {
-      //cerr << "\nVertex: " << vi << endl;
-      for (size_t ei = 0; ei < incoming.size(); ++ei) {
-
-        edgeHeads[incoming[ei]] = vi;
-
-        //cerr << "edge id " << ei << endl;
-        FeatureStatsType incomingScore = incoming[ei]->GetScore(weights);
-        for (size_t i = 0; i < incoming[ei]->Children().size(); ++i) {
-          size_t childId = incoming[ei]->Children()[i];
-          //UTIL_THROW_IF(backPointers[childId].second == kMinScore,
-          //  HypergraphException, "Graph was not topologically sorted. curr=" << vi << " prev=" << childId);
-          incomingScore = max(incomingScore + backPointers[childId].second, kMinScore);
-          outgoing[childId].push_back(incoming[ei]);
-        }
-        vector<FeatureStatsType> bleuStats(kBleuNgramOrder*2+1);
-        // cerr << "Score: " << incomingScore << " Bleu: ";
-        // if (incomingScore > nonbleuscore) {nonbleuscore = incomingScore; nonbleuid = ei;}
-        FeatureStatsType totalScore = incomingScore;
-        if (bleuWeight) {
-          // #########################
-          /*const Edge* temp = backPointers[vi].first;
-          backPointers[vi].first = incoming[ei];
-          boost::shared_ptr<HgHypothesis> bestHypo (new HgHypothesis());
-          bool flag = GetBestHypothesis(vi, graph, backPointers, bestHypo.get());
-          ExtendBestHypothesis(vi, graph, backPointers, forwardPointers, edgeHeads, bestHypo.get());
-          // update BLEU
-          (*bestHypo).bleuStats.resize(kBleuNgramOrder*2+1);
-          NgramCounter counts;
-          list<WordVec> openNgrams;
-          for (size_t i = 0; i < (*bestHypo).text.size(); ++i) {
-            const Vocab::Entry* entry = (*bestHypo).text[i];
-            if (graph.IsBoundary(entry)) continue;
-            openNgrams.push_front(WordVec());
-            for (list<WordVec>::iterator k = openNgrams.begin(); k != openNgrams.end();  ++k) {
-              k->push_back(entry);
-              ++counts[*k];
-            }
-            if (openNgrams.size() >=  kBleuNgramOrder) openNgrams.pop_back();
-          }
-          for (NgramCounter::const_iterator ngi = counts.begin(); ngi != counts.end(); ++ngi) {
-            size_t order = ngi->first.size();
-            size_t count = ngi->second;
-            (*bestHypo).bleuStats[(order-1)*2 + 1] += count;
-            (*bestHypo).bleuStats[(order-1) * 2] += min(count, references.NgramMatches(sentenceId,ngi->first,true));
-          }
-          (*bestHypo).bleuStats[kBleuNgramOrder*2] = references.Length(sentenceId);
-          backPointers[vi].first = temp;
-          FeatureStatsType bleuScore = sentenceLevelBackgroundBleu((*bestHypo).bleuStats, backgroundBleu);
-          */// ###############################
-
-          FeatureStatsType bleuScore =
-          bleuScorer.Score(*(incoming[ei]), vertex, bleuStats);
-          if (isnan(bleuScore)) {
-            cerr << "WARN: bleu score undefined" << endl;
-            cerr << "\tVertex id : " << vi << endl;
-            cerr << "\tBleu stats : ";
-            for (size_t i = 0; i < bleuStats.size(); ++i) {
-              cerr << bleuStats[i] << ",";
-            }
-            cerr << endl;
-            bleuScore = 0;
-          }
-          //UTIL_THROW_IF(isnan(bleuScore), util::Exception, "Bleu score undefined, smoothing problem?");
-          totalScore += bleuWeight * bleuScore;
-          //  cerr << bleuScore << " Total: " << incomingScore << endl << endl;
-          //cerr << "is " << incomingScore << " bs " << bleuScore << endl;
-        }
-        if (totalScore >= winnerScore) {
-          //We only store the feature score (not the bleu score) with the vertex,
-          //since the bleu score is always cumulative, ie from counts for the whole span.
-          winnerScore = totalScore;
-          backPointers[vi].first = incoming[ei];
-          backPointers[vi].second = incomingScore;
-          winnerStats = bleuStats;
-
-          boost::shared_ptr<HgHypothesis> bestHypo (new HgHypothesis());
-          GetBestHypothesis(vi, graph, backPointers, bestHypo.get());
-
-          /*(*bestHypo).bleuStats.resize(kBleuNgramOrder*2+1);
-          NgramCounter counts;
-          list<WordVec> openNgrams;
-          for (size_t i = 0; i < (*bestHypo).text.size(); ++i) {
-            const Vocab::Entry* entry = (*bestHypo).text[i];
-            if (graph.IsBoundary(entry)) continue;
-            openNgrams.push_front(WordVec());
-            for (list<WordVec>::iterator k = openNgrams.begin(); k != openNgrams.end();  ++k) {
-              k->push_back(entry);
-              ++counts[*k];
-            }
-            if (openNgrams.size() >=  kBleuNgramOrder) openNgrams.pop_back();
-          }
-          for (NgramCounter::const_iterator ngi = counts.begin(); ngi != counts.end(); ++ngi) {
-            size_t order = ngi->first.size();
-            size_t count = ngi->second;
-            (*bestHypo).bleuStats[(order-1)*2 + 1] += count;
-            (*bestHypo).bleuStats[(order-1) * 2] += min(count, references.NgramMatches(sentenceId,ngi->first,true));
-          }
-          (*bestHypo).bleuStats[kBleuNgramOrder*2] = references.Length(sentenceId);
-*/
-          size_t s = vertex.startPos;
-          size_t e = vertex.endPos;
-
-          Range r(s,e);
-
-          //HypColl::iterator iter = bestHypos.find(r);
-          //if (iter == bestHypos.end()  || inner_product((*iter->second).featureVector,weights) + bleuWeight*sentenceLevelBackgroundBleu((*iter->second).bleuStats, backgroundBleu) < inner_product((*bestHypo).featureVector,weights) + bleuWeight * sentenceLevelBackgroundBleu((*bestHypo).bleuStats, backgroundBleu)) {
-          bestHypos[r] = bestHypo;
-          rangeVi[r] = vi;
-            //bestHypo.featureVector.write(cerr, " "); cerr << endl;
-          //}
-        }
-      }
-      //update with winner
-      //if (bleuWeight) {
-      //TODO: Not sure if we need this when computing max-model solution
-      if (backPointers[vi].first) {
-        bleuScorer.UpdateState(*(backPointers[vi].first), vi, winnerStats);
-      }
-
-    }
-  }
-
-  //HgBleuScorer bleuScorer2(references, graph, sentenceId, backgroundBleu);
-/*  for (size_t i = 1; i <= graph.VertexSize(); ++i) {
-    size_t vi = graph.VertexSize() - i;
-    FeatureStatsType winnerScore = kMinScore;
-    const Vertex& vertex = graph.GetVertex(vi);
-
-    if (!outgoing[vi].size()) {
-      forwardPointers[vi].first = NULL;
-      forwardPointers[vi].second = 0;
-    } else {
-      for (size_t ei = 0; ei < outgoing[vi].size(); ++ei) {
-        //cerr << "Edge " << edgeIds[outgoing[vi][ei]] << endl;
-        FeatureStatsType outgoingScore = 0;
-        //add score of head
-        outgoingScore += forwardPointers[edgeHeads[outgoing[vi][ei]]].second;
-        //cerr << "Forward score " << outgoingScore << endl;
-        //forwardPointers[edgeHeads[outgoing[vi][ei]]].second = outgoingScore;
-        //sum scores of siblings
-        for (size_t ci = 0; ci < outgoing[vi][ei]->Children().size(); ++ci) {
-          size_t siblingId = outgoing[vi][ei]->Children()[ci];
-          if (siblingId != vi) {
-            //cerr << "\tSibling " << siblingId << endl;
-            outgoingScore += backPointers[siblingId].second;
-            //outgoingScore = max(outgoingScore + backPointers[siblingId].second, kMinScore);
-          }
-        }
-        //cerr << outgoingScore << endl;
-        outgoingScore += outgoing[vi][ei]->GetScore(weights);
-        //outgoing[vi][ei]->Features().get()->write(cerr, " "); cerr << endl;
-        //weights.write(cerr, " "); cerr << endl;
-        //cerr << outgoing[vi][ei]->GetScore(weights) << endl;
-        //cerr << outgoingScore << endl;
-        FeatureStatsType totalScore = outgoingScore;
-
-        if (totalScore > winnerScore) {
-          forwardPointers[vi].first = outgoing[vi][ei];
-          forwardPointers[vi].second = outgoingScore;
-          winnerScore = totalScore;
-          //winnerStats = bleuStats;
-        }
-        //cerr << "Vertex " << vi << " forward score " << outgoingScore << endl;
-      }
-      //if (forwardPointers[vi].first) {
-      //  bleuScorer2.UpdateState(*(forwardPointers[vi].first), vi, winnerStats);
-      //}
-    }
-  }
-*/
-
-
-  for(HypColl::iterator iter = bestHypos.begin(); iter != bestHypos.end(); iter++) {
-    const Range& range = iter->first;
-    HgHypothesis* bestHypo = iter->second.get();
-
-    assert(rangeVi.find(range) != rangeVi.end());
-
-    size_t vi = rangeVi.find(range)->second;
-
+    // extend
     ExtendBestHypothesis(vi, graph, backPointers, forwardPointers, edgeHeads, bestHypo);
 
+    /*for(size_t ti = 0; ti < bestHypo->text.size(); ++ti) {
+      const Vocab::Entry* entry = bestHypo->text[ti];
+      cerr << (*entry).first << " ";
+    }
+    cerr << endl;*/
+
     (*bestHypo).bleuStatsPot.resize(kBleuNgramOrder*2+1);
-    NgramCounter counts;
-    list<WordVec> openNgrams;
+    NgramCounter counts2;
+    list<WordVec> openNgrams2;
     for (size_t i = 0; i < (*bestHypo).text.size(); ++i) {
       const Vocab::Entry* entry = (*bestHypo).text[i];
       if (graph.IsBoundary(entry)) continue;
-      openNgrams.push_front(WordVec());
-      for (list<WordVec>::iterator k = openNgrams.begin(); k != openNgrams.end();  ++k) {
+      openNgrams2.push_front(WordVec());
+      for (list<WordVec>::iterator k = openNgrams2.begin(); k != openNgrams2.end();  ++k) {
         k->push_back(entry);
-        ++counts[*k];
+        ++counts2[*k];
       }
-      if (openNgrams.size() >=  kBleuNgramOrder) openNgrams.pop_back();
+      if (openNgrams2.size() >=  kBleuNgramOrder) openNgrams2.pop_back();
     }
-    for (NgramCounter::const_iterator ngi = counts.begin(); ngi != counts.end(); ++ngi) {
+    for (NgramCounter::const_iterator ngi = counts2.begin(); ngi != counts2.end(); ++ngi) {
       size_t order = ngi->first.size();
       size_t count = ngi->second;
       (*bestHypo).bleuStatsPot[(order-1)*2 + 1] += count;
       (*bestHypo).bleuStatsPot[(order-1) * 2] += min(count, references.NgramMatches(sentenceId,ngi->first,true));
     }
     (*bestHypo).bleuStatsPot[kBleuNgramOrder*2] = references.Length(sentenceId);
-  }
+//  }*/
 
   //exit(1);
+    return true;
 
 }
 

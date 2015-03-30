@@ -126,7 +126,7 @@ typedef std::pair<size_t, size_t> Range ;
 typedef std::map<Range, boost::shared_ptr<HgHypothesis> > HypColl;
 
 void Viterbi(const Graph& graph, const SparseVector& weights, float bleuWeight, const ReferenceSet& references, size_t sentenceId, const std::vector<FeatureStatsType>& backgroundBleu, HgHypothesis* bestHypo);
-void ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWeight, const ReferenceSet& references , size_t sentenceId, const std::vector<FeatureStatsType>& backgroundBleu,  HypColl& bestHypos);
+bool ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWeight, const ReferenceSet& references , size_t sentenceId, const std::vector<FeatureStatsType>& backgroundBleu,  HgHypothesis* bestHypo, const Range& range);
 };
 
 #endif

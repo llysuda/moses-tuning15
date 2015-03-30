@@ -367,7 +367,7 @@ SAHypergraphHopeFearDecoder::SAHypergraphHopeFearDecoder
   const MiraWeightVector& wv,
   Scorer* scorer
 ) :
-  num_dense_(num_dense)
+  num_dense_(num_dense), end_(1)
 {
 
   UTIL_THROW_IF(streaming, util::Exception, "Streaming not currently supported for hypergraphs");
@@ -434,50 +434,75 @@ bool SAHypergraphHopeFearDecoder::finished()
 typedef pair<size_t, size_t> Range ;
 typedef map<Range, boost::shared_ptr<HgHypothesis> > HypColl;
 
+void SAHypergraphHopeFearDecoder::NewSent() {
+  end_ = 1;
+}
+
+bool SAHypergraphHopeFearDecoder::HasNext() {
+  size_t sentenceId = *sentenceIdIter_;
+  const Graph& graph = *(graphs_[sentenceId]);
+  size_t size = graph.GetVertex(graph.VertexSize()-1).SourceCovered();
+  return end_ < size;
+}
+
 void SAHypergraphHopeFearDecoder::HopeFear(
   const vector<ValType>& backgroundBleu,
   const MiraWeightVector& wv,
-  vector<HopeFearData>& hopeFears
+  HopeFearData* hopeFear
 )
 {
   size_t sentenceId = *sentenceIdIter_;
-  SparseVector weights;
-  wv.ToSparse(&weights, num_dense_);
   const Graph& graph = *(graphs_[sentenceId]);
 
-  HypColl hopes;
-  HypColl fears;
-  HypColl models;
+  SparseVector weights;
+  wv.ToSparse(&weights, num_dense_);
+
+  HgHypothesis hopeHypo;
+  HgHypothesis fearHypo;
+  HgHypothesis modelHypo;
+
+  Range range(0, end_);
+  end_++;
+
   for(size_t safe_loop=0; safe_loop<2; safe_loop++) {
 
     //Model decode
-    ViterbiForSA(graph, weights, 1, references_, sentenceId, backgroundBleu, hopes);
-    ViterbiForSA(graph, weights, -1, references_, sentenceId, backgroundBleu, fears);
-    ViterbiForSA(graph, weights, 0, references_, sentenceId, backgroundBleu, models);
+    if (!ViterbiForSA(graph, weights, 1, references_, sentenceId, backgroundBleu, &hopeHypo, range)) {
+      hopeFear->hopeFearEqual = true;
+      return;
+    }
+    if (!ViterbiForSA(graph, weights, -1, references_, sentenceId, backgroundBleu, &fearHypo, range)) {
+      hopeFear->hopeFearEqual = true;
+      return;
+    }
+    if (!ViterbiForSA(graph, weights, 0, references_, sentenceId, backgroundBleu, &modelHypo, range)) {
+      hopeFear->hopeFearEqual = true;
+      return;
+    }
 
     break;
   }
 
-  for(HypColl::const_iterator iter = hopes.begin(); iter != hopes.end(); ++iter) {
-
-    const Range& range = iter->first;
-
-    if (range.second - range.first < 2)
-      continue;
-
-    if (fears.find(range) == fears.end() || models.find(range) == models.end()) {
-      continue;
-    }
-
-    const HgHypothesis& hopeHypo = *(iter->second.get());
-    const HgHypothesis& fearHypo = *(fears.find(range)->second.get());
-    const HgHypothesis& modelHypo = *(models.find(range)->second.get());
-
-    HopeFearData hopeFear;
+//  for(HypColl::const_iterator iter = hopes.begin(); iter != hopes.end(); ++iter) {
+//
+//    const Range& range = iter->first;
+//
+//    if (range.second - range.first < 2)
+//      continue;
+//
+//    if (fears.find(range) == fears.end() || models.find(range) == models.end()) {
+//      continue;
+//   }
+//
+//    const HgHypothesis& hopeHypo = *(iter->second.get());
+//    const HgHypothesis& fearHypo = *(fears.find(range)->second.get());
+//    const HgHypothesis& modelHypo = *(models.find(range)->second.get());
+//
+//    HopeFearData hopeFear;
     //modelFeatures, hopeFeatures and fearFeatures
-    hopeFear.modelFeatures = MiraFeatureVector(modelHypo.featureVector, num_dense_);
-    hopeFear.hopeFeatures = MiraFeatureVector(hopeHypo.featureVector, num_dense_);
-    hopeFear.fearFeatures = MiraFeatureVector(fearHypo.featureVector, num_dense_);
+    hopeFear->modelFeatures = MiraFeatureVector(modelHypo.featureVector, num_dense_);
+    hopeFear->hopeFeatures = MiraFeatureVector(hopeHypo.featureVector, num_dense_);
+    hopeFear->fearFeatures = MiraFeatureVector(fearHypo.featureVector, num_dense_);
 
 
     //cerr << "modelFeatures: " << hopeFear.modelFeatures << endl;
@@ -488,11 +513,11 @@ void SAHypergraphHopeFearDecoder::HopeFear(
     //Only C++11
     //hopeFear->modelStats.assign(std::begin(modelHypo.bleuStats), std::end(modelHypo.bleuStats));
     vector<ValType> fearStats(scorer_->NumberOfScores());
-    hopeFear.hopeStats.reserve(scorer_->NumberOfScores());
-    hopeFear.modelStats.reserve(scorer_->NumberOfScores());
+    hopeFear->hopeStats.reserve(scorer_->NumberOfScores());
+    hopeFear->modelStats.reserve(scorer_->NumberOfScores());
     for (size_t i = 0; i < fearStats.size(); ++i) {
-      hopeFear.modelStats.push_back(modelHypo.bleuStatsPot[i]);
-      hopeFear.hopeStats.push_back(hopeHypo.bleuStatsPot[i]);
+      hopeFear->modelStats.push_back(modelHypo.bleuStatsPot[i]);
+      hopeFear->hopeStats.push_back(hopeHypo.bleuStatsPot[i]);
 
       fearStats[i] = fearHypo.bleuStatsPot[i];
     }
@@ -525,22 +550,22 @@ void SAHypergraphHopeFearDecoder::HopeFear(
     }
     cerr << endl;
     */
-    hopeFear.hopeBleu = sentenceLevelBackgroundBleu(hopeHypo.bleuStatsPot, backgroundBleu);
-    hopeFear.fearBleu = sentenceLevelBackgroundBleu(fearHypo.bleuStatsPot, backgroundBleu);
+    hopeFear->hopeBleu = sentenceLevelBackgroundBleu(hopeHypo.bleuStats, backgroundBleu);
+    hopeFear->fearBleu = sentenceLevelBackgroundBleu(fearHypo.bleuStats, backgroundBleu);
 
     //If fv and bleu stats are equal, then assume equal
-    hopeFear.hopeFearEqual = true; //(hopeFear->hopeBleu - hopeFear->fearBleu) >= 1e-8;
-    if (hopeFear.hopeFearEqual) {
+    hopeFear->hopeFearEqual = true; //(hopeFear->hopeBleu - hopeFear->fearBleu) >= 1e-8;
+    if (hopeFear->hopeFearEqual) {
       for (size_t i = 0; i < fearStats.size(); ++i) {
-        if (fearStats[i] != hopeFear.hopeStats[i]) {
-          hopeFear.hopeFearEqual = false;
+        if (fearStats[i] != hopeFear->hopeStats[i]) {
+          hopeFear->hopeFearEqual = false;
           break;
         }
       }
     }
-    hopeFear.hopeFearEqual = hopeFear.hopeFearEqual && (hopeFear.fearFeatures == hopeFear.hopeFeatures);
+    hopeFear->hopeFearEqual = hopeFear->hopeFearEqual && (hopeFear->fearFeatures == hopeFear->hopeFeatures);
 
-    hopeFears.push_back(hopeFear);
+    //hopeFears.push_back(hopeFear);
 
     // verbose
 /*    cerr << sentenceId << " Range: " << range.first << " " << range.second << endl;
@@ -566,30 +591,41 @@ void SAHypergraphHopeFearDecoder::HopeFear(
     cerr << endl << "Features: " << hopeFear.fearFeatures;
     cerr << endl;
 */    // verbose
-  }
-
+  //}
 }
 
 void SAHypergraphHopeFearDecoder::MaxModel(const AvgWeightVector& wv, vector<ValType>* stats)
 {
   assert(!finished());
-  HgHypothesis bestHypo;
+
   size_t sentenceId = *sentenceIdIter_;
   SparseVector weights;
   wv.ToSparse(&weights, num_dense_);
   vector<ValType> bg(scorer_->NumberOfScores());
+
+  const Graph& graph = *(graphs_[sentenceId]);
+  size_t size = graph.GetVertex(graph.VertexSize()-1).SourceCovered();
   //cerr << "Calculating bleu on " << sentenceId << endl;
-  Viterbi(*(graphs_[sentenceId]), weights, 0, references_, sentenceId, bg, &bestHypo);
-  stats->resize(bestHypo.bleuStats.size());
+
+  stats->resize(bg.size());
+
+  for(size_t end = 1; end < size; end++) {
+    HgHypothesis bestHypo;
+    Range range(0,end);
+    if (ViterbiForSA(graph, weights, 0, references_, sentenceId, bg, &bestHypo, range)) {
+      for (size_t i = 0; i < bestHypo.bleuStatsPot.size(); ++i) {
+        (*stats)[i] += bestHypo.bleuStatsPot[i];
+      }
+    }
+  }
+
   /*
   for (size_t i = 0; i < bestHypo.text.size(); ++i) {
     cerr << bestHypo.text[i]->first << " ";
   }
   cerr << endl;
   */
-  for (size_t i = 0; i < bestHypo.bleuStats.size(); ++i) {
-    (*stats)[i] = bestHypo.bleuStats[i];
-  }
+
 }
 
 

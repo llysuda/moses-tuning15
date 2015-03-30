@@ -226,6 +226,64 @@ void ChartManager::CalcNBest(
   }
 }
 
+void ChartManager::CalcNBest(
+  const WordsRange& range,
+  std::size_t n,
+  std::vector<boost::shared_ptr<ChartKBestExtractor::Derivation> > &nBestList,
+  bool onlyDistinct) const
+{
+  nBestList.clear();
+  if (n == 0 || m_source.GetSize() == 0) {
+    return;
+  }
+
+  // Get the list of top-level hypotheses, sorted by score.
+  //WordsRange range(0, m_source.GetSize()-1);
+  const ChartCell &lastCell = m_hypoStackColl.Get(range);
+
+  if (lastCell.GetSize() == 0)
+    return;
+
+  boost::scoped_ptr<const std::vector<const ChartHypothesis*> > topLevelHypos(
+    lastCell.GetAllSortedHypotheses());
+  if (!topLevelHypos) {
+    return;
+  }
+
+  ChartKBestExtractor extractor;
+
+  if (!onlyDistinct) {
+    // Return the n-best list as is, including duplicate translations.
+    extractor.Extract(*topLevelHypos, n, nBestList);
+    return;
+  }
+
+  // Determine how many derivations to extract.  If the n-best list is
+  // restricted to distinct translations then this limit should be bigger
+  // than n.  The n-best factor determines how much bigger the limit should be,
+  // with 0 being 'unlimited.'  This actually sets a large-ish limit in case
+  // too many translations are identical.
+  const StaticData &staticData = StaticData::Instance();
+  const std::size_t nBestFactor = staticData.GetNBestFactor();
+  std::size_t numDerivations = (nBestFactor == 0) ? n*1000 : n*nBestFactor;
+
+  // Extract the derivations.
+  ChartKBestExtractor::KBestVec bigList;
+  bigList.reserve(numDerivations);
+  extractor.Extract(*topLevelHypos, numDerivations, bigList);
+
+  // Copy derivations into nBestList, skipping ones with repeated translations.
+  std::set<Phrase> distinct;
+  for (ChartKBestExtractor::KBestVec::const_iterator p = bigList.begin();
+       nBestList.size() < n && p != bigList.end(); ++p) {
+    boost::shared_ptr<ChartKBestExtractor::Derivation> derivation = *p;
+    Phrase translation = ChartKBestExtractor::GetOutputPhrase(*derivation);
+    if (distinct.insert(translation).second) {
+      nBestList.push_back(derivation);
+    }
+  }
+}
+
 void ChartManager::WriteSearchGraph(const ChartSearchGraphWriter& writer) const
 {
 
@@ -327,13 +385,30 @@ void ChartManager::OutputNBest(OutputCollector *collector) const
 {
   const StaticData &staticData = StaticData::Instance();
   size_t nBestSize = staticData.GetNBestSize();
+  size_t size = m_source.GetSize();
   if (nBestSize > 0) {
     const size_t translationId = m_source.GetTranslationId();
 
     VERBOSE(2,"WRITING " << nBestSize << " TRANSLATION ALTERNATIVES TO " << staticData.GetNBestFilePath() << endl);
-    std::vector<boost::shared_ptr<ChartKBestExtractor::Derivation> > nBestList;
-    CalcNBest(nBestSize, nBestList,staticData.GetDistinctNBest());
-    OutputNBestList(collector, nBestList, translationId);
+    if (staticData.GetSearchAware()) {
+      std::vector<boost::shared_ptr<ChartKBestExtractor::Derivation> > nBestListAll;
+      for(size_t width=2; width <= size; ++width) {
+        size_t start = 0;
+        //for(size_t start=0; start <= size-width; start++) {
+        size_t end = start+width-1;
+        WordsRange range(start, end);
+        std::vector<boost::shared_ptr<ChartKBestExtractor::Derivation> > nBestList;
+        CalcNBest(range, nBestSize, nBestList,staticData.GetDistinctNBest());
+        nBestListAll.insert(nBestListAll.end(), nBestList.begin(), nBestList.end());
+        //}
+      }
+      OutputNBestList(collector, nBestListAll, translationId);
+
+    } else {
+      std::vector<boost::shared_ptr<ChartKBestExtractor::Derivation> > nBestList;
+      CalcNBest(nBestSize, nBestList,staticData.GetDistinctNBest());
+      OutputNBestList(collector, nBestList, translationId);
+    }
     IFVERBOSE(2) {
       PrintUserTime("N-Best Hypotheses Generation Time:");
     }
@@ -361,12 +436,29 @@ void ChartManager::OutputNBestList(OutputCollector *collector,
 
   bool PrintNBestTrees = StaticData::Instance().PrintNBestTrees();
 
+  FactorCollection &factorCollection = FactorCollection::Instance();
+
   for (ChartKBestExtractor::KBestVec::const_iterator p = nBestList.begin();
        p != nBestList.end(); ++p) {
     const ChartKBestExtractor::Derivation &derivation = **p;
 
     // get the derivation's target-side yield
     Phrase outputPhrase = ChartKBestExtractor::GetOutputPhrase(derivation);
+
+    // for search-aware
+    if (outputPhrase.GetFactor(0,0)->GetString().as_string() != BOS_) {
+      Word startWord(Input);
+      const Factor *factor = factorCollection.AddFactor(Input, 0, BOS_); // TODO - non-factored
+      startWord.SetFactor(0, factor);
+      outputPhrase.PrependWord(startWord);
+    }
+    if (outputPhrase.GetFactor(outputPhrase.GetSize()-1,0)->GetString().as_string() != EOS_) {
+      Word endWord(Input);
+      const Factor *factor = factorCollection.AddFactor(Input, 0, EOS_); // TODO - non-factored
+      endWord.SetFactor(0, factor);
+      outputPhrase.AddWord(endWord);
+    }
+    // end
 
     // delete <s> and </s>
     UTIL_THROW_IF2(outputPhrase.GetSize() < 2,
@@ -397,6 +489,13 @@ void ChartManager::OutputNBestList(OutputCollector *collector,
     if (PrintNBestTrees) {
       TreePointer tree = ChartKBestExtractor::GetOutputTree(derivation);
       out << " ||| " << tree->GetString();
+    }
+
+    // if search-aware, output span info
+    if (staticData.GetSearchAware()) {
+      const ChartHypothesis &hypo = derivation.edge.head->hypothesis;
+      const WordsRange& range = hypo.GetCurrSourceRange();
+      out << " ||| " << range.GetStartPos() << " " << range.GetEndPos();
     }
 
     out << std::endl;

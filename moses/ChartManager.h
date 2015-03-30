@@ -110,6 +110,7 @@ public:
   void AddXmlChartOptions();
   const ChartHypothesis *GetBestHypothesis() const;
   void CalcNBest(size_t n, std::vector<boost::shared_ptr<ChartKBestExtractor::Derivation> > &nBestList, bool onlyDistinct=false) const;
+  void CalcNBest(const WordsRange& range, size_t n, std::vector<boost::shared_ptr<ChartKBestExtractor::Derivation> > &nBestList, bool onlyDistinct=false) const;
 
   /** "Moses" (osg)  type format */
   void OutputSearchGraphMoses(std::ostream &outputSearchGraphStream) const;

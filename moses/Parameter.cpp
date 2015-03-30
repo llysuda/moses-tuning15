@@ -218,6 +218,7 @@ Parameter::Parameter()
 
   AddParam("reachable-span-pair", "wether output all reachable span pair. need to combine with ConstrainedDecoding, min souce span 5");
   AddParam("only-tunable", "only output tunable features");
+  AddParam("search-aware", "for nbest list, output all spans");
 }
 
 Parameter::~Parameter()

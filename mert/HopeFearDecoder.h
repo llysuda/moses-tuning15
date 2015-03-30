@@ -188,16 +188,17 @@ public:
     const std::vector<ValType>& backgroundBleu,
     const MiraWeightVector& wv,
     HopeFearData* hopeFear
-  ){};
+  );
 
-  void HopeFear(
+  /*void HopeFear(
       const std::vector<ValType>& backgroundBleu,
       const MiraWeightVector& wv,
       std::vector<HopeFearData>& hopeFears
-    );
+    );*/
 
   virtual void MaxModel(const AvgWeightVector& wv, std::vector<ValType>* stats);
-
+  bool HasNext();
+  void NewSent();
 private:
   size_t num_dense_;
   //maps sentence Id to graph ptr
@@ -207,6 +208,7 @@ private:
   std::vector<size_t>::const_iterator sentenceIdIter_;
   ReferenceSet references_;
   Vocab vocab_;
+  size_t end_;
 };
 
 };

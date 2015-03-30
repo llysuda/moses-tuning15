@@ -367,7 +367,7 @@ my $mert_pro_cmd     = File::Spec->catfile($mertdir, "pro");
 my $mert_mira_cmd    = File::Spec->catfile($mertdir, "kbmira");
 my $mert_eval_cmd    = File::Spec->catfile($mertdir, "evaluator");
 
-if ($___HG_MIRA && $sa_mira) {
+if ($sa_mira && $___HG_MIRA) {
     $mert_mira_cmd    = File::Spec->catfile($mertdir, "sakbmira");
 }
 
@@ -520,6 +520,11 @@ if ($___DECODER_FLAGS =~ /(^|\s)-(config|f) /
   ) {
   die "It is forbidden to supply any of -config, -ttable-file, -distortion-file, -generation-file or -lmodel-file in the --decoder-flags.\nPlease use only the --config option to give the config file that lists all the supplementary files.";
 }
+
+if ($sa_mira && !$___HG_MIRA) {
+    $___DECODER_FLAGS .= " -search-aware ";
+}
+
 
 # Paths needed for simulated post-editing
 $working_dir_abs = ensure_full_path($___WORKING_DIR);
@@ -834,6 +839,13 @@ while (1) {
       $lsamp_file      = "$lsamp_file.gz";
       $lsamp_file      = "$lsamp_file.gz";
       $nbest_file      = "$combined_file";
+    }
+    if ($sa_mira && !$___HG_MIRA) {
+        @references = ();
+        push @references, "run$run.reference";
+        my $reformat = File::Spec->catfile($SCRIPTS_ROOTDIR, "training", "reformat4sa.perl");
+        safesystem("$reformat $nbest_file $___DEV_E > $nbest_file.rf 2> run$run.reference") or die "reformat nbest error";
+        safesystem("mv $nbest_file.rf $nbest_file") or die "mv reformated nbest error";
     }
     safesystem("gzip -f $nbest_file") or die "Failed to gzip run*out";# unless $___HG_MIRA;
     $nbest_file = $nbest_file.".gz";
@@ -1177,7 +1189,12 @@ if($___RETURN_BEST_DEV) {
     if ($sctype =~ /RED/) {
         $red_extract_args =~ s/red\/red\.nbest\.stat/run$i\.red.nbest\.stat/;
     }
-      
+    
+    if ($sa_mira && !$___HG_MIRA) {
+        @references = ();
+        push @references, "run$i.reference";
+    }
+    
     my $cmd = "$mert_eval_cmd --reference " . join(",", @references) . " $red_extract_args --nbest run$i.best$___N_BEST_LIST_SIZE.out.gz";
     $cmd .= " -l $__REMOVE_SEGMENTATION" if defined( $__PROMIX_TRAINING);
     safesystem("$cmd 2> /dev/null 1> $evalout");
