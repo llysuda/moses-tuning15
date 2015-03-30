@@ -509,10 +509,6 @@ bool ViterbiForSA(const Graph& graph, const SparseVector& weights, float bleuWei
 
     size_t s = vertex.startPos;
     size_t e = vertex.endPos;
-
-    if (e > range.second)
-      continue;
-
     Range r(s,e);
 
     if (!incoming.size()) {
