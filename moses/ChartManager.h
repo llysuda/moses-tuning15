@@ -46,6 +46,10 @@ class ChartSearchGraphWriter;
 class ChartManager : public BaseManager
 {
 private:
+
+  std::vector<std::vector<std::pair<float, const Phrase*> > > m_potHypoColl;
+  void CalcPotHypo(const WordsRange& range);
+
   ChartCellCollection m_hypoStackColl;
   std::auto_ptr<SentenceStats> m_sentenceStats;
   clock_t m_start; /**< starting time, used for logging */

@@ -237,6 +237,7 @@ protected:
   bool reachableSpanPair;
   bool m_onlyTunable;
   bool m_searchAware;
+  bool m_extendSA;
 
   // number of nonterminal labels
 //   size_t m_nonTerminalSize;
@@ -812,6 +813,10 @@ public:
 
   bool GetSearchAware() const {
     return m_searchAware;
+  }
+
+  bool GetExtendSA() const {
+    return m_extendSA;
   }
 };
 

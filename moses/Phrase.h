@@ -159,6 +159,7 @@ public:
 
   /** appends a phrase at the end of current phrase **/
   void Append(const Phrase &endPhrase);
+  void Prepend(const Phrase &startPhrase);
   void PrependWord(const Word &newWord);
 
   void Clear() {

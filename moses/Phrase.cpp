@@ -142,6 +142,14 @@ void Phrase::Append(const Phrase &endPhrase)
   }
 }
 
+void Phrase::Prepend(const Phrase &startPhrase)
+{
+  size_t len = startPhrase.GetSize();
+  for (size_t i = 0; i < len; i++) {
+    PrependWord(startPhrase.GetWord(len-i-1));
+  }
+}
+
 void Phrase::PrependWord(const Word &newWord)
 {
   AddWord();

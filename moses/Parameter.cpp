@@ -219,6 +219,7 @@ Parameter::Parameter()
   AddParam("reachable-span-pair", "wether output all reachable span pair. need to combine with ConstrainedDecoding, min souce span 5");
   AddParam("only-tunable", "only output tunable features");
   AddParam("search-aware", "for nbest list, output all spans");
+  AddParam("extend-sa", "extend span with future translation, only when search-aware is used");
 }
 
 Parameter::~Parameter()

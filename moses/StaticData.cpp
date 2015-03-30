@@ -108,6 +108,7 @@ bool StaticData::LoadData(Parameter *parameter)
   m_parameter->SetParameter(reachableSpanPair, "reachable-span-pair", false);
   m_parameter->SetParameter(m_onlyTunable, "only-tunable", false);
   m_parameter->SetParameter(m_searchAware, "search-aware", false);
+  m_parameter->SetParameter(m_extendSA, "extend-sa", false);
 
   // verbose level
   m_parameter->SetParameter(m_verboseLevel, "verbose", (size_t) 1);
