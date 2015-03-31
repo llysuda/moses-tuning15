@@ -369,9 +369,9 @@ my $mert_pro_cmd     = File::Spec->catfile($mertdir, "pro");
 my $mert_mira_cmd    = File::Spec->catfile($mertdir, "kbmira");
 my $mert_eval_cmd    = File::Spec->catfile($mertdir, "evaluator");
 
-if ($sa_mira) {
-    $mert_mira_cmd    = File::Spec->catfile($mertdir, "sakbmira");
-}
+#if ($sa_mira) {
+#    $mert_mira_cmd    = File::Spec->catfile($mertdir, "sakbmira");
+#}
 
 if ($viterbi) {
     $mert_mert_cmd = File::Spec->catfile($SCRIPTS_ROOTDIR, "training", "viterbi", "main.py") ;
@@ -524,10 +524,10 @@ if ($___DECODER_FLAGS =~ /(^|\s)-(config|f) /
 }
 
 if ($sa_mira && !$___HG_MIRA) {
-    $___DECODER_FLAGS .= " -search-aware";
-    if ($extend_sa) {
-        $___DECODER_FLAGS .= " -extend-sa";
-    }
+    $___DECODER_FLAGS .= " -search-aware -extend-sa";
+    #if ($extend_sa) {
+    #    $___DECODER_FLAGS .= " -extend-sa";
+    #}
 }
 
 
@@ -856,9 +856,9 @@ while (1) {
         safesystem("$reformat $nbest_file $___DEV_E $extend_sa $nbest_file > run$run.reference") or die "reformat nbest error";
         safesystem("mv $nbest_file.par $nbest_file") or die "mv reformated nbest error";
         #safesystem("gzip -f $nbest_file.par") or die "Failed to gzip run*out";
-        safesystem("gzip -f $nbest_file.pot") or die "Failed to gzip run*out";
+        #safesystem("gzip -f $nbest_file.pot") or die "Failed to gzip run*out";
         #$nbestPar_file = $nbest_file.".par.gz";
-        $nbestPot_file = $nbest_file.".pot.gz";
+        #$nbestPot_file = $nbest_file.".pot.gz";
     }
     safesystem("gzip -f $nbest_file") or die "Failed to gzip run*out";# unless $___HG_MIRA;
     $nbest_file = $nbest_file.".gz";
@@ -889,10 +889,10 @@ while (1) {
     
     $cmd .= "$mert_extract_cmd $mert_extract_args --scfile $score_file --ffile $feature_file -r " . join(",", @references) . " -n $nbest_file";
     
-    if ($sa_mira && !$___HG_MIRA) {
-        $cmd .= " -d\n";
-        $cmd .= "$mert_extract_cmd $mert_extract_args -d --scfile $score_file.pot --ffile $feature_file.pot -r " . join(",", @references) . " -n $nbestPot_file";
-    }
+    #if ($sa_mira && !$___HG_MIRA) {
+    #    $cmd .= " -d\n";
+    #    $cmd .= "$mert_extract_cmd $mert_extract_args -d --scfile $score_file.pot --ffile $feature_file.pot -r " . join(",", @references) . " -n $nbestPot_file";
+    #}
 
   if (! $___HG_MIRA) {
     $cmd .= " -d" if $__PROMIX_TRAINING; # Allow duplicates
@@ -964,13 +964,13 @@ while (1) {
     $scfiles = "$score_file";
   }
     
-  if ($sa_mira && !$___HG_MIRA) {
-    if (defined $prev_score_file_pot) {
-        $scfilesPot = "$prev_score_file_pot,$score_file.pot";
-    } else{
-        $scfilesPot = "$score_file.pot";
-    }
-  }
+#  if ($sa_mira && !$___HG_MIRA) {
+#    if (defined $prev_score_file_pot) {
+#        $scfilesPot = "$prev_score_file_pot,$score_file.pot";
+#    } else{
+#        $scfilesPot = "$score_file.pot";
+#    }
+#  }
 
   my $mira_settings = "";
   if (($___BATCH_MIRA || $___HG_MIRA) && $batch_mira_args) {
@@ -986,9 +986,9 @@ while (1) {
   my $pro_file_settings = "--ffile " . join(" --ffile ", split(/,/, $ffiles)) .
                           " --scfile " .  join(" --scfile ", split(/,/, $scfiles));
   
-  if ($sa_mira && !$___HG_MIRA) {
-    $pro_file_settings .= " --scfilepot " .  join(" --scfilepot ", split(/,/, $scfilesPot));
-  }
+#  if ($sa_mira && !$___HG_MIRA) {
+#    $pro_file_settings .= " --scfilepot " .  join(" --scfilepot ", split(/,/, $scfilesPot));
+#  }
 
   push @allnbests, $nbest_file;
   my $promix_file_settings = 
@@ -1194,13 +1194,13 @@ while (1) {
       $prev_score_file = "run${i}.${base_score_file}";
     }
     
-    if ($sa_mira && !$___HG_MIRA) {
-        if (defined $prev_score_file_pot) {
-          $prev_score_file_pot = "${prev_score_file_pot},run${i}.${base_score_file}.pot";
-        } else {
-          $prev_score_file_pot = "run${i}.${base_score_file}.pot";
-        }
-    }
+    #if ($sa_mira && !$___HG_MIRA) {
+    #    if (defined $prev_score_file_pot) {
+    #      $prev_score_file_pot = "${prev_score_file_pot},run${i}.${base_score_file}.pot";
+    #    } else {
+    #      $prev_score_file_pot = "run${i}.${base_score_file}.pot";
+    #    }
+    #}
 
     if (defined $prev_init_file) {
       $prev_init_file = "${prev_init_file},run${i}.${weights_in_file}";
@@ -1238,9 +1238,9 @@ if($___RETURN_BEST_DEV) {
     
     my $cmd = "$mert_eval_cmd --reference " . join(",", @references) . " $red_extract_args --nbest run$i.best$___N_BEST_LIST_SIZE.out.gz";
     
-    if ($sa_mira && !$___HG_MIRA) {
-        $cmd = "$mert_eval_cmd --reference " . join(",", @references) . " $red_extract_args --nbest run$i.best$___N_BEST_LIST_SIZE.out.pot.gz";
-    } 
+    #if ($sa_mira && !$___HG_MIRA) {
+    #    $cmd = "$mert_eval_cmd --reference " . join(",", @references) . " $red_extract_args --nbest run$i.best$___N_BEST_LIST_SIZE.out.pot.gz";
+    #} 
     
     $cmd .= " -l $__REMOVE_SEGMENTATION" if defined( $__PROMIX_TRAINING);
     safesystem("$cmd 2> /dev/null 1> $evalout");

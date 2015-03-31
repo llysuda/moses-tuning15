@@ -32,7 +32,7 @@ my $prevSentId = 0;
 my $lcount = 0;
 
 open PAR, ">", "$outPrefix.par";
-open POT, ">", "$outPrefix.pot";
+#open POT, ">", "$outPrefix.pot";
 
 while (<N>) {
     chomp;
@@ -43,7 +43,7 @@ while (<N>) {
     my $score = $items[3];
     my $span = $items[4];
     
-    my $potTrans = "";
+    #my $potTrans = "";
     #if ($extend) {
         $potTrans = $items[5];
     #}
@@ -64,12 +64,12 @@ while (<N>) {
     }
     
     #if ($extend) {
-        print POT "$count ||| $potTrans ||| $features ||| $score\n";
+    #    print POT "$count ||| $potTrans ||| $features ||| $score\n";
     #}
-    print PAR "$count ||| $target ||| $features ||| $score\n";
+    print PAR "$count ||| $potTrans ||| $features ||| $score\n";
     
     $lcount++;
 }
 
 close PAR;
-close POT;
+#close POT;
