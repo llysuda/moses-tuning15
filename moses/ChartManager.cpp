@@ -437,15 +437,19 @@ void ChartManager::OutputNBest(OutputCollector *collector) const
     VERBOSE(2,"WRITING " << nBestSize << " TRANSLATION ALTERNATIVES TO " << staticData.GetNBestFilePath() << endl);
     if (staticData.GetSearchAware()) {
       std::vector<boost::shared_ptr<ChartKBestExtractor::Derivation> > nBestListAll;
-      for(size_t width=2; width <= size; ++width) {
-        size_t start = 0;
-        //for(size_t start=0; start <= size-width; start++) {
-        size_t end = start+width-1;
-        WordsRange range(start, end);
-        std::vector<boost::shared_ptr<ChartKBestExtractor::Derivation> > nBestList;
-        CalcNBest(range, nBestSize, nBestList,staticData.GetDistinctNBest());
-        nBestListAll.insert(nBestListAll.end(), nBestList.begin(), nBestList.end());
-        //}
+      for(size_t width=1; width <= size; ++width) {
+        //size_t start = 0;
+        for(size_t start=0; start <= size-width; start++) {
+          size_t end = start+width-1;
+
+          if (start == end && (start == 0 || start == size-1))
+            continue;
+
+          WordsRange range(start, end);
+          std::vector<boost::shared_ptr<ChartKBestExtractor::Derivation> > nBestList;
+          CalcNBest(range, nBestSize, nBestList,staticData.GetDistinctNBest());
+          nBestListAll.insert(nBestListAll.end(), nBestList.begin(), nBestList.end());
+        }
       }
       OutputNBestList(collector, nBestListAll, translationId);
 
@@ -567,6 +571,9 @@ void ChartManager::OutputNBestList(OutputCollector *collector,
         extendPhrase.RemoveWord(0);
         extendPhrase.RemoveWord(extendPhrase.GetSize() - 1);
         OutputSurface(out, extendPhrase, outputFactorOrder, false);
+      } else {
+        out << " ||| ";
+        OutputSurface(out, outputPhrase, outputFactorOrder, false);
       }
     }
 
