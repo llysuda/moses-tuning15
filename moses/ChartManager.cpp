@@ -438,8 +438,8 @@ void ChartManager::OutputNBest(OutputCollector *collector) const
     if (staticData.GetSearchAware()) {
       std::vector<boost::shared_ptr<ChartKBestExtractor::Derivation> > nBestListAll;
       for(size_t width=1; width <= size; ++width) {
-        //size_t start = 0;
-        for(size_t start=0; start <= size-width; start++) {
+        size_t start = 0;
+        //for(size_t start=0; start <= size-width; start++) {
           size_t end = start+width-1;
 
           if (start == end && (start == 0 || start == size-1))
@@ -449,7 +449,7 @@ void ChartManager::OutputNBest(OutputCollector *collector) const
           std::vector<boost::shared_ptr<ChartKBestExtractor::Derivation> > nBestList;
           CalcNBest(range, nBestSize, nBestList,staticData.GetDistinctNBest());
           nBestListAll.insert(nBestListAll.end(), nBestList.begin(), nBestList.end());
-        }
+        //}
       }
       OutputNBestList(collector, nBestListAll, translationId);
 
