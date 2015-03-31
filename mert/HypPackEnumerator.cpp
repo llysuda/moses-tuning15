@@ -146,6 +146,25 @@ const ScoreDataItem& StreamingHypPackEnumerator::scoresAt(size_t index)
   return m_scoreDataIters[pij.first]->operator[](pij.second);
 }
 
+const MiraFeatureVector& StreamingHypPackEnumerator::featuresAt(size_t index, size_t i)
+{
+  //if(!m_primed) {
+    cerr << "Querying features from an unprimed HypPackEnumerator" << endl;
+    exit(1);
+  //}
+  return m_current_featureVectors[index];
+}
+
+const ScoreDataItem& StreamingHypPackEnumerator::scoresAt(size_t index, size_t i)
+{
+ // if(!m_primed) {
+    cerr << "Querying scores from an unprimed HypPackEnumerator" << endl;
+    exit(1);
+  //}
+  const pair<size_t,size_t>& pij = m_current_indexes[index];
+  return m_scoreDataIters[pij.first]->operator[](pij.second);
+}
+
 size_t StreamingHypPackEnumerator::cur_id()
 {
   return m_sentenceId;
@@ -205,6 +224,15 @@ const MiraFeatureVector& RandomAccessHypPackEnumerator::featuresAt(size_t i)
 const ScoreDataItem& RandomAccessHypPackEnumerator::scoresAt(size_t i)
 {
   return m_scores[m_indexes[m_cur_index]][i];
+}
+
+const MiraFeatureVector& RandomAccessHypPackEnumerator::featuresAt(size_t index, size_t i)
+{
+  return m_features[index][i];
+}
+const ScoreDataItem& RandomAccessHypPackEnumerator::scoresAt(size_t index, size_t i)
+{
+  return m_scores[index][i];
 }
 
 size_t RandomAccessHypPackEnumerator::cur_id()

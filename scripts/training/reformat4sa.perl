@@ -1,12 +1,13 @@
 #!/usr/bin/perl 
 
 if ($#ARGV < 1) {
-    die "\$ nbest-for-sa ref extend > nbest.out 2> ref.out ";
+    die "\$ nbest-for-sa ref extend outprefix > ref.out ";
 }
 
 my $nbest = $ARGV[0];
 my $ref = $ARGV[1];
 my $extend = $ARGV[2];
+my $outPrefix = $ARGV[3];
 
 # read references
 my @refLines;
@@ -29,6 +30,10 @@ my $count = 0;
 my $prevSpan = "0 0";
 my $prevSentId = 0;
 my $lcount = 0;
+
+open PAR, ">", "$outPrefix.par";
+open POT, ">", "$outPrefix.pot";
+
 while (<N>) {
     chomp;
     my @items = split /\s+\|\|\|\s+/;
@@ -39,9 +44,9 @@ while (<N>) {
     my $span = $items[4];
     
     my $potTrans = "";
-    if ($extend) {
+    #if ($extend) {
         $potTrans = $items[5];
-    }
+    #}
     
     # remove possible space
     $span =~ s/^\s+//g;
@@ -55,14 +60,16 @@ while (<N>) {
         }
         $prevSentId = $sentId;
         $prevSpan = $span;
-        print STDERR "$refLines[$sentId]\n";
+        print STDOUT "$refLines[$sentId]\n";
     }
     
-    if ($extend) {
-        print STDOUT "$count ||| $potTrans ||| $features ||| $score\n";
-    } else {
-        print STDOUT "$count ||| $target ||| $features ||| $score\n";
-    }
+    #if ($extend) {
+        print POT "$count ||| $potTrans ||| $features ||| $score\n";
+    #}
+    print PAR "$count ||| $target ||| $features ||| $score\n";
     
     $lcount++;
 }
+
+close PAR;
+close POT;

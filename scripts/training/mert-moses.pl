@@ -369,7 +369,7 @@ my $mert_pro_cmd     = File::Spec->catfile($mertdir, "pro");
 my $mert_mira_cmd    = File::Spec->catfile($mertdir, "kbmira");
 my $mert_eval_cmd    = File::Spec->catfile($mertdir, "evaluator");
 
-if ($sa_mira && $___HG_MIRA) {
+if ($sa_mira) {
     $mert_mira_cmd    = File::Spec->catfile($mertdir, "sakbmira");
 }
 
@@ -567,6 +567,7 @@ my $sparse_weights_file = undef;
 
 my $prev_feature_file = undef;
 my $prev_score_file = undef;
+my $prev_score_file_pot = undef;
 my $prev_init_file = undef;
 my @allnbests;
 
@@ -743,6 +744,9 @@ if ($continue) {
 
 my $run = $start_run - 1;
 
+my $nbestPar_file = undef;
+my $nbestPot_file = undef;
+
 my $oldallsorted    = undef;
 my $allsorted       = undef;
 my $nbest_file      = undef;
@@ -849,8 +853,12 @@ while (1) {
         @references = ();
         push @references, "run$run.reference";
         my $reformat = File::Spec->catfile($SCRIPTS_ROOTDIR, "training", "reformat4sa.perl");
-        safesystem("$reformat $nbest_file $___DEV_E $extend_sa > $nbest_file.rf 2> run$run.reference") or die "reformat nbest error";
-        safesystem("mv $nbest_file.rf $nbest_file") or die "mv reformated nbest error";
+        safesystem("$reformat $nbest_file $___DEV_E $extend_sa $nbest_file > run$run.reference") or die "reformat nbest error";
+        safesystem("mv $nbest_file.par $nbest_file") or die "mv reformated nbest error";
+        #safesystem("gzip -f $nbest_file.par") or die "Failed to gzip run*out";
+        safesystem("gzip -f $nbest_file.pot") or die "Failed to gzip run*out";
+        #$nbestPar_file = $nbest_file.".par.gz";
+        $nbestPot_file = $nbest_file.".pot.gz";
     }
     safesystem("gzip -f $nbest_file") or die "Failed to gzip run*out";# unless $___HG_MIRA;
     $nbest_file = $nbest_file.".gz";
@@ -880,6 +888,11 @@ while (1) {
     }
     
     $cmd .= "$mert_extract_cmd $mert_extract_args --scfile $score_file --ffile $feature_file -r " . join(",", @references) . " -n $nbest_file";
+    
+    if ($sa_mira && !$___HG_MIRA) {
+        $cmd .= " -d\n";
+        $cmd .= "$mert_extract_cmd $mert_extract_args -d --scfile $score_file.pot --ffile $feature_file.pot -r " . join(",", @references) . " -n $nbestPot_file";
+    }
 
   if (! $___HG_MIRA) {
     $cmd .= " -d" if $__PROMIX_TRAINING; # Allow duplicates
@@ -936,17 +949,27 @@ while (1) {
 
   my $ffiles = "";
   my $scfiles = "";
+  
+  my $scfilesPot = "";
 
   if (defined $prev_feature_file) {
     $ffiles = "$prev_feature_file,$feature_file";
   } else{
     $ffiles = "$feature_file";
   }
-
+    
   if (defined $prev_score_file) {
     $scfiles = "$prev_score_file,$score_file";
   } else{
     $scfiles = "$score_file";
+  }
+    
+  if ($sa_mira && !$___HG_MIRA) {
+    if (defined $prev_score_file_pot) {
+        $scfilesPot = "$prev_score_file_pot,$score_file.pot";
+    } else{
+        $scfilesPot = "$score_file.pot";
+    }
   }
 
   my $mira_settings = "";
@@ -962,6 +985,10 @@ while (1) {
   my $file_settings = " --ffile $ffiles --scfile $scfiles";
   my $pro_file_settings = "--ffile " . join(" --ffile ", split(/,/, $ffiles)) .
                           " --scfile " .  join(" --scfile ", split(/,/, $scfiles));
+  
+  if ($sa_mira && !$___HG_MIRA) {
+    $pro_file_settings .= " --scfilepot " .  join(" --scfilepot ", split(/,/, $scfilesPot));
+  }
 
   push @allnbests, $nbest_file;
   my $promix_file_settings = 
@@ -1152,6 +1179,7 @@ while (1) {
   print "loading data from $firstrun to $run (prev_aggregate_nbl_size=$prev_aggregate_nbl_size)\n";
   $prev_feature_file = undef;
   $prev_score_file   = undef;
+  $prev_score_file_pot   = undef;
   $prev_init_file    = undef;
   for (my $i = $firstrun; $i <= $run; $i++) {
     if (defined $prev_feature_file) {
@@ -1164,6 +1192,14 @@ while (1) {
       $prev_score_file = "${prev_score_file},run${i}.${base_score_file}";
     } else {
       $prev_score_file = "run${i}.${base_score_file}";
+    }
+    
+    if ($sa_mira && !$___HG_MIRA) {
+        if (defined $prev_score_file_pot) {
+          $prev_score_file_pot = "${prev_score_file_pot},run${i}.${base_score_file}.pot";
+        } else {
+          $prev_score_file_pot = "run${i}.${base_score_file}.pot";
+        }
     }
 
     if (defined $prev_init_file) {
@@ -1201,6 +1237,11 @@ if($___RETURN_BEST_DEV) {
     }
     
     my $cmd = "$mert_eval_cmd --reference " . join(",", @references) . " $red_extract_args --nbest run$i.best$___N_BEST_LIST_SIZE.out.gz";
+    
+    if ($sa_mira && !$___HG_MIRA) {
+        $cmd = "$mert_eval_cmd --reference " . join(",", @references) . " $red_extract_args --nbest run$i.best$___N_BEST_LIST_SIZE.out.pot.gz";
+    } 
+    
     $cmd .= " -l $__REMOVE_SEGMENTATION" if defined( $__PROMIX_TRAINING);
     safesystem("$cmd 2> /dev/null 1> $evalout");
     open my $fh, '<', $evalout or die "Can't read $evalout : $!";

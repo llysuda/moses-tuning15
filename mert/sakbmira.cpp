@@ -63,6 +63,7 @@ int main(int argc, char** argv)
   string sctype = "BLEU";
   string scconfig = "";
   vector<string> scoreFiles;
+  vector<string> scoreFilesPot;
   vector<string> featureFiles;
   vector<string> referenceFiles; //for hg mira
   string hgDir;
@@ -88,6 +89,7 @@ int main(int argc, char** argv)
   ("sctype", po::value<string>(&sctype), "the scorer type (default BLEU)")
   ("scconfig,c", po::value<string>(&scconfig), "configuration string passed to scorer")
   ("scfile,S", po::value<vector<string> >(&scoreFiles), "Scorer data files")
+  ("scfilepot", po::value<vector<string> >(&scoreFilesPot), "Scorer data files")
   ("ffile,F", po::value<vector<string> > (&featureFiles), "Feature data files")
   ("hgdir,H", po::value<string> (&hgDir), "Directory containing hypergraphs")
   ("reference,R", po::value<vector<string> > (&referenceFiles), "Reference files, only required for hypergraph mira")
@@ -229,14 +231,14 @@ int main(int argc, char** argv)
   // Initialize background corpus
   vector<ValType> bg(scorer->NumberOfScores(), 1);
 
-  boost::scoped_ptr<SAHypergraphHopeFearDecoder> decoder;
-  //if (type == "nbest") {
-  //  decoder.reset(new NbestHopeFearDecoder(featureFiles, scoreFiles, streaming, no_shuffle, safe_hope, scorer.get()));
+  boost::scoped_ptr<HopeFearDecoder> decoder;
+  if (type == "nbest") {
+    decoder.reset(new SANbestHopeFearDecoder(featureFiles, scoreFiles, scoreFilesPot, streaming, no_shuffle, safe_hope, scorer.get()));
   //} else if (type == "hypergraph") {
-    decoder.reset(new SAHypergraphHopeFearDecoder(hgDir, referenceFiles, initDenseSize, streaming, no_shuffle, safe_hope, hgPruning, wv, scorer.get()));
-  //} else {
-  //  UTIL_THROW(util::Exception, "Unknown batch mira type: '" << type << "'");
-  //}
+  //  decoder.reset(new SAHypergraphHopeFearDecoder(hgDir, referenceFiles, initDenseSize, streaming, no_shuffle, safe_hope, hgPruning, wv, scorer.get()));
+  } else {
+    UTIL_THROW(util::Exception, "Unknown batch mira type: '" << type << "'");
+  }
 
   // Training loop
   if (!streaming_out)
@@ -251,9 +253,9 @@ int main(int argc, char** argv)
     for(decoder->reset(); !decoder->finished(); decoder->next()) {
       //vector<HopeFearData> hfds;
       //decoder->HopeFear(bg,wv,hfds);
-      decoder->NewSent();
+      //decoder->NewSent();
 
-      while (decoder->HasNext()) {
+      //while (decoder->HasNext()) {
         HopeFearData hfd;
         decoder->HopeFear(bg,wv,&hfd);
 
@@ -300,7 +302,7 @@ int main(int argc, char** argv)
               bg[k]+=hfd.hopeStats[k];
           }
         }
-      }
+      //}
       iNumExamples++;
       ++sentenceIndex;
       if (streaming_out)

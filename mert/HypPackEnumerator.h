@@ -38,6 +38,8 @@ public:
   virtual std::size_t num_dense() const = 0;
   virtual const MiraFeatureVector& featuresAt(std::size_t i) = 0;
   virtual const ScoreDataItem& scoresAt(std::size_t i) = 0;
+  virtual const MiraFeatureVector& featuresAt(std::size_t index, std::size_t i) = 0;
+  virtual const ScoreDataItem& scoresAt(std::size_t index, std::size_t i) = 0;
 };
 
 // Instantiation that streams from disk
@@ -58,6 +60,8 @@ public:
   virtual std::size_t cur_size();
   virtual const MiraFeatureVector& featuresAt(std::size_t i);
   virtual const ScoreDataItem& scoresAt(std::size_t i);
+  virtual const MiraFeatureVector& featuresAt(std::size_t index, std::size_t i);
+  virtual const ScoreDataItem& scoresAt(std::size_t index, std::size_t i);
 
 private:
   void prime();
@@ -94,6 +98,9 @@ public:
   virtual std::size_t cur_size();
   virtual const MiraFeatureVector& featuresAt(std::size_t i);
   virtual const ScoreDataItem& scoresAt(std::size_t i);
+  virtual const MiraFeatureVector& featuresAt(std::size_t index, std::size_t i);
+  virtual const ScoreDataItem& scoresAt(std::size_t index, std::size_t i);
+
 
 private:
   bool m_no_shuffle;

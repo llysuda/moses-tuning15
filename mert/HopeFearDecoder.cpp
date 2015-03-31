@@ -628,5 +628,113 @@ void SAHypergraphHopeFearDecoder::MaxModel(const AvgWeightVector& wv, vector<Val
 
 }
 
+SANbestHopeFearDecoder::SANbestHopeFearDecoder(
+  const vector<string>& featureFiles,
+  const vector<string>&  scoreFilesPar,
+  const vector<string>&  scoreFilesPot,
+  bool streaming,
+  bool  no_shuffle,
+  bool safe_hope,
+  Scorer* scorer
+) : safe_hope_(safe_hope)
+{
+  scorer_ = scorer;
+  if (streaming) {
+    trainPar_.reset(new StreamingHypPackEnumerator(featureFiles, scoreFilesPar));
+    trainPot_.reset(new StreamingHypPackEnumerator(featureFiles, scoreFilesPot));
+  } else {
+    trainPar_.reset(new RandomAccessHypPackEnumerator(featureFiles, scoreFilesPar, no_shuffle));
+    trainPot_.reset(new RandomAccessHypPackEnumerator(featureFiles, scoreFilesPot, no_shuffle));
+  }
+}
+
+
+void SANbestHopeFearDecoder::next()
+{
+  trainPar_->next();
+}
+
+bool SANbestHopeFearDecoder::finished()
+{
+  return trainPar_->finished();
+}
+
+void SANbestHopeFearDecoder::reset()
+{
+  trainPar_->reset();
+}
+
+void SANbestHopeFearDecoder::HopeFear(
+  const std::vector<ValType>& backgroundBleu,
+  const MiraWeightVector& wv,
+  HopeFearData* hopeFear
+)
+{
+
+  size_t cur_index = trainPar_->cur_id();
+
+  // Hope / fear decode
+  ValType hope_scale = 1.0;
+  size_t hope_index=0, fear_index=0, model_index=0;
+  ValType hope_score=0, fear_score=0, model_score=0;
+  for(size_t safe_loop=0; safe_loop<2; safe_loop++) {
+    ValType hope_bleu, hope_model;
+    for(size_t i=0; i< trainPar_->cur_size(); i++) {
+      const MiraFeatureVector& vec=trainPar_->featuresAt(i);
+      ValType score = wv.score(vec);
+      ValType bleu = scorer_->calculateSentenceLevelBackgroundScore(trainPar_->scoresAt(i), backgroundBleu);
+      // Hope
+      if(i==0 || (hope_scale*score + bleu) > hope_score) {
+        hope_score = hope_scale*score + bleu;
+        hope_index = i;
+        hope_bleu = bleu;
+        hope_model = score;
+      }
+      // Fear
+      if(i==0 || (score - bleu) > fear_score) {
+        fear_score = score - bleu;
+        fear_index = i;
+      }
+      // Model
+      if(i==0 || score > model_score) {
+        model_score = score;
+        model_index = i;
+      }
+    }
+    // Outer loop rescales the contribution of model score to 'hope' in antagonistic cases
+    // where model score is having far more influence than BLEU
+    hope_bleu *= BLEU_RATIO; // We only care about cases where model has MUCH more influence than BLEU
+    if(safe_hope_ && safe_loop==0 && abs(hope_model)>1e-8 && abs(hope_bleu)/abs(hope_model)<hope_scale)
+      hope_scale = abs(hope_bleu) / abs(hope_model);
+    else break;
+  }
+  hopeFear->modelFeatures = trainPar_->featuresAt(model_index);
+  hopeFear->hopeFeatures = trainPar_->featuresAt(hope_index);
+  hopeFear->fearFeatures = trainPar_->featuresAt(fear_index);
+
+  hopeFear->hopeStats = trainPot_->scoresAt(cur_index, hope_index);
+  hopeFear->hopeBleu = scorer_->calculateSentenceLevelBackgroundScore(hopeFear->hopeStats, backgroundBleu);
+  const vector<float>& fear_stats = trainPot_->scoresAt(cur_index, fear_index);
+  hopeFear->fearBleu = scorer_->calculateSentenceLevelBackgroundScore(fear_stats, backgroundBleu);
+
+  hopeFear->modelStats = trainPot_->scoresAt(cur_index, model_index);
+  hopeFear->hopeFearEqual = (hope_index == fear_index);
+}
+
+void SANbestHopeFearDecoder::MaxModel(const AvgWeightVector& wv, std::vector<ValType>* stats)
+{
+  // Find max model
+  size_t max_index=0;
+  ValType max_score=0;
+  for(size_t i=0; i<trainPar_->cur_size(); i++) {
+    MiraFeatureVector vec(trainPar_->featuresAt(i));
+    ValType score = wv.score(vec);
+    if(i==0 || score > max_score) {
+      max_index = i;
+      max_score = score;
+    }
+  }
+  *stats = trainPot_->scoresAt(trainPar_->cur_id(), max_index);
+}
 
 };

@@ -211,6 +211,38 @@ private:
   size_t end_;
 };
 
+/** Gets hope-fear from nbest lists */
+class SANbestHopeFearDecoder : public virtual HopeFearDecoder
+{
+public:
+  SANbestHopeFearDecoder(const std::vector<std::string>& featureFiles,
+                       const std::vector<std::string>&  scoreFilesPar,
+                       const std::vector<std::string>&  scoreFilesPot,
+                       bool streaming,
+                       bool  no_shuffle,
+                       bool safe_hope,
+                       Scorer* scorer
+                      );
+
+  virtual void reset();
+  virtual void next();
+  virtual bool finished();
+
+  virtual void HopeFear(
+    const std::vector<ValType>& backgroundBleu,
+    const MiraWeightVector& wv,
+    HopeFearData* hopeFear
+  );
+
+  virtual void MaxModel(const AvgWeightVector& wv, std::vector<ValType>* stats);
+
+private:
+  boost::scoped_ptr<HypPackEnumerator> trainPar_;
+  boost::scoped_ptr<HypPackEnumerator> trainPot_;
+  bool safe_hope_;
+
+};
+
 };
 
 #endif
