@@ -47,7 +47,7 @@ class ChartManager : public BaseManager
 {
 private:
 
-  std::vector<std::vector<std::pair<float, const Phrase*> > > m_potHypoColl;
+  std::vector<std::vector<std::pair<float, Phrase> > > m_potHypoColl;
   void CalcPotHypo(const WordsRange& range);
 
   ChartCellCollection m_hypoStackColl;

@@ -76,33 +76,32 @@ void ChartManager::CalcPotHypo(const WordsRange& range)
   size_t start = range.GetStartPos();
   size_t end = range.GetEndPos();
 
-  if (start == end && end == m_source.GetSize()-1) {
-    Phrase p;
-    FactorCollection &factorCollection = FactorCollection::Instance();
-    Word endWord(Input);
-    const Factor *factor = factorCollection.AddFactor(Input, 0, EOS_); // TODO - non-factored
-    endWord.SetFactor(0, factor);
-    p.AddWord(endWord);
-    m_potHypoColl[start][end-start] = make_pair<float, const Phrase*>(0, &p);
-    return;
-  }
-
   const ChartCell &cell = m_hypoStackColl.Get(range);
   if (cell.GetSize() == 0) {
-    float bestScore = std::numeric_limits<float>::min();
-    for(size_t mid = start; mid < end; mid++) {
-      float score = m_potHypoColl[start][mid-start].first + m_potHypoColl[mid+1][end-mid-1].first;
-      if (score > bestScore) {
-        bestScore = score;
-        Phrase p(*(m_potHypoColl[start][mid-start].second));
-        p.Append(*(m_potHypoColl[mid+1][end-mid-1].second));
-        m_potHypoColl[start][end-start] = make_pair<float, const Phrase*>(score, &p);
+    if (start == end && end == m_source.GetSize()-1) {
+      Phrase p;
+      FactorCollection &factorCollection = FactorCollection::Instance();
+      Word endWord(Input);
+      const Factor *factor = factorCollection.AddFactor(Input, 0, EOS_); // TODO - non-factored
+      endWord.SetFactor(0, factor);
+      p.AddWord(endWord);
+      m_potHypoColl[start][end-start] = make_pair<float, Phrase>(0, p);
+    } else {
+      float bestScore = -1e8;
+      for(size_t mid = start; mid < end; mid++) {
+        float score = m_potHypoColl[start][mid-start].first + m_potHypoColl[mid+1][end-mid-1].first;
+        if (score > bestScore) {
+          bestScore = score;
+          Phrase p(m_potHypoColl[start][mid-start].second);
+          p.Append(m_potHypoColl[mid+1][end-mid-1].second);
+          m_potHypoColl[start][end-start] = make_pair<float, Phrase>(score, p);
+        }
       }
     }
   } else {
     const ChartHypothesis* h = cell.GetBestHypothesis();
     Phrase p = h->GetOutputPhrase();
-    m_potHypoColl[start][end-start] = make_pair<float, const Phrase*>(h->GetTotalScore(), &p);
+    m_potHypoColl[start][end-start] = make_pair<float, Phrase>(h->GetTotalScore(), p);
   }
 }
 
@@ -501,11 +500,11 @@ void ChartManager::OutputNBestList(OutputCollector *collector,
 
       if (range.GetStartPos() > 0) {
         // extend left
-        extendPhrase.Prepend(*(m_potHypoColl[0][range.GetStartPos()-1].second));
+        extendPhrase.Prepend(m_potHypoColl[0][range.GetStartPos()-1].second);
       }
       if (range.GetEndPos() < size-1) {
         // extend right
-        extendPhrase.Prepend(*(m_potHypoColl[range.GetEndPos()+1][size-2-range.GetEndPos()].second));
+        extendPhrase.Append(m_potHypoColl[range.GetEndPos()+1][size-2-range.GetEndPos()].second);
       }
 
     }
@@ -565,6 +564,8 @@ void ChartManager::OutputNBestList(OutputCollector *collector,
 
       if(staticData.GetExtendSA()) {
         out << " ||| ";
+        extendPhrase.RemoveWord(0);
+        extendPhrase.RemoveWord(extendPhrase.GetSize() - 1);
         OutputSurface(out, extendPhrase, outputFactorOrder, false);
       }
     }

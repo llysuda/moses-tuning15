@@ -172,6 +172,7 @@ my $redType = "stat";
 my $viterbi = 0;
 my $norm = 1;
 my $sa_mira = 0;
+my $extend_sa = 0;
 
 use Getopt::Long;
 GetOptions(
@@ -224,6 +225,7 @@ GetOptions(
   "batch-mira" => \$___BATCH_MIRA,
   "hg-mira" => \$___HG_MIRA,
   "search-aware" => \$sa_mira,
+  "extend-sa" => \$extend_sa,
   "batch-mira-args=s" => \$batch_mira_args,
   "promix-training=s" => \$__PROMIX_TRAINING,
   "promix-table=s" => \@__PROMIX_TABLES,
@@ -522,7 +524,10 @@ if ($___DECODER_FLAGS =~ /(^|\s)-(config|f) /
 }
 
 if ($sa_mira && !$___HG_MIRA) {
-    $___DECODER_FLAGS .= " -search-aware ";
+    $___DECODER_FLAGS .= " -search-aware";
+    if ($extend_sa) {
+        $___DECODER_FLAGS .= " -extend-sa";
+    }
 }
 
 
@@ -844,7 +849,7 @@ while (1) {
         @references = ();
         push @references, "run$run.reference";
         my $reformat = File::Spec->catfile($SCRIPTS_ROOTDIR, "training", "reformat4sa.perl");
-        safesystem("$reformat $nbest_file $___DEV_E > $nbest_file.rf 2> run$run.reference") or die "reformat nbest error";
+        safesystem("$reformat $nbest_file $___DEV_E $extend_sa > $nbest_file.rf 2> run$run.reference") or die "reformat nbest error";
         safesystem("mv $nbest_file.rf $nbest_file") or die "mv reformated nbest error";
     }
     safesystem("gzip -f $nbest_file") or die "Failed to gzip run*out";# unless $___HG_MIRA;

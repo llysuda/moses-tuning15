@@ -1,11 +1,12 @@
 #!/usr/bin/perl 
 
 if ($#ARGV < 1) {
-    die "\$ nbest-for-sa ref > nbest.out 2> ref.out ";
+    die "\$ nbest-for-sa ref extend > nbest.out 2> ref.out ";
 }
 
 my $nbest = $ARGV[0];
 my $ref = $ARGV[1];
+my $extend = $ARGV[2];
 
 # read references
 my @refLines;
@@ -37,6 +38,11 @@ while (<N>) {
     my $score = $items[3];
     my $span = $items[4];
     
+    my $potTrans = "";
+    if ($extend) {
+        $potTrans = $items[5];
+    }
+    
     # remove possible space
     $span =~ s/^\s+//g;
     $span =~ s/\s+$//g;
@@ -51,8 +57,12 @@ while (<N>) {
         $prevSpan = $span;
         print STDERR "$refLines[$sentId]\n";
     }
-
-    print STDOUT "$count ||| $target ||| $features ||| $score\n";
+    
+    if ($extend) {
+        print STDOUT "$count ||| $potTrans ||| $features ||| $score\n";
+    } else {
+        print STDOUT "$count ||| $target ||| $features ||| $score\n";
+    }
     
     $lcount++;
 }
