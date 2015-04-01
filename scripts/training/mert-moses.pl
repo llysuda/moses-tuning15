@@ -1208,6 +1208,7 @@ while (1) {
       $prev_init_file = "run${i}.${weights_in_file}";
     }
   }
+  
   print "loading data from $prev_feature_file\n" if defined($prev_feature_file);
   print "loading data from $prev_score_file\n"   if defined($prev_score_file);
   print "loading data from $prev_init_file\n"    if defined($prev_init_file);

@@ -49,6 +49,7 @@ private:
 
   std::vector<std::vector<std::pair<float, Phrase> > > m_potHypoColl;
   void CalcPotHypo(const WordsRange& range);
+  void CalcRangesRecursive(const ChartHypothesis* hypo, std::vector<const WordsRange*>& ranges) const;
 
   ChartCellCollection m_hypoStackColl;
   std::auto_ptr<SentenceStats> m_sentenceStats;

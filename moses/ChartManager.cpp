@@ -426,6 +426,19 @@ void ChartManager::OutputBest(OutputCollector *collector) const
   }
 }
 
+void ChartManager::CalcRangesRecursive(const ChartHypothesis* hypo, vector<const WordsRange*>& ranges) const
+{
+  if (hypo == NULL)
+    return;
+
+  ranges.push_back(&(hypo->GetCurrSourceRange()));
+  size_t size = hypo->GetPrevHypos().size();
+  for (size_t i = 0; i < size; i++) {
+    const ChartHypothesis* prev = hypo->GetPrevHypo(i);
+    CalcRangesRecursive(prev, ranges);
+  }
+}
+
 void ChartManager::OutputNBest(OutputCollector *collector) const
 {
   const StaticData &staticData = StaticData::Instance();
@@ -437,6 +450,32 @@ void ChartManager::OutputNBest(OutputCollector *collector) const
     VERBOSE(2,"WRITING " << nBestSize << " TRANSLATION ALTERNATIVES TO " << staticData.GetNBestFilePath() << endl);
     if (staticData.GetSearchAware()) {
       std::vector<boost::shared_ptr<ChartKBestExtractor::Derivation> > nBestListAll;
+
+      // add best
+      //std::vector<boost::shared_ptr<ChartKBestExtractor::Derivation> > nBestList;
+      //CalcNBest(nBestSize, nBestList,staticData.GetDistinctNBest());
+      //nBestListAll.insert(nBestListAll.end(), nBestList.begin(), nBestList.end());
+
+      // select ranges
+     /* const ChartHypothesis *bestHypo = GetBestHypothesis();
+      std::vector<const WordsRange*> ranges;
+      CalcRangesRecursive(bestHypo, ranges);
+
+      for(std::vector<const WordsRange*>::const_iterator iter = ranges.begin();
+          iter != ranges.end(); ++iter) {
+        const WordsRange& range = **iter;
+
+        if (range.GetStartPos() == 0 && range.GetEndPos() == 0) {
+          continue;
+        }
+
+        std::vector<boost::shared_ptr<ChartKBestExtractor::Derivation> > nBestList;
+        CalcNBest(range, nBestSize, nBestList,staticData.GetDistinctNBest());
+        if (nBestList.size() >= 10) {
+          nBestListAll.insert(nBestListAll.end(), nBestList.begin(), nBestList.end());
+        }
+      }*/
+
       //for(size_t width=1; width <= size; ++width) {
       //  size_t start = 0;
         //for(size_t start=0; start <= size-width; start++) {
