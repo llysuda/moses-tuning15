@@ -562,7 +562,7 @@ void ChartManager::OutputNBestList(OutputCollector *collector,
     //end
 
     // for search-aware
-    if (outputPhrase.GetFactor(0,0)->GetString().as_string() != BOS_) {
+    /*if (outputPhrase.GetFactor(0,0)->GetString().as_string() != BOS_) {
       Word startWord(Input);
       const Factor *factor = factorCollection.AddFactor(Input, 0, BOS_); // TODO - non-factored
       startWord.SetFactor(0, factor);
@@ -573,7 +573,7 @@ void ChartManager::OutputNBestList(OutputCollector *collector,
       const Factor *factor = factorCollection.AddFactor(Input, 0, EOS_); // TODO - non-factored
       endWord.SetFactor(0, factor);
       outputPhrase.AddWord(endWord);
-    }
+    }*/
     // end
 
     // delete <s> and </s>
