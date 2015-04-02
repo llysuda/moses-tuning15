@@ -141,7 +141,7 @@ void ChartManager::Decode()
       cell.CleanupArcList();
       cell.SortHypotheses();
 
-      if (StaticData::Instance().GetExtendSA()) {
+      if (StaticData::Instance().GetSearchAware()) {
         CalcPotHypo(range);
       }
     }
@@ -543,19 +543,19 @@ void ChartManager::OutputNBestList(OutputCollector *collector,
     Phrase outputPhrase = ChartKBestExtractor::GetOutputPhrase(derivation);
 
     //
-    Phrase extendPhrase(outputPhrase);
-    if (staticData.GetSearchAware() && staticData.GetExtendSA()) {
+    //Phrase extendPhrase(outputPhrase);
+    if (staticData.GetSearchAware()) {
       // extend partial translation
       const ChartHypothesis &hypo = derivation.edge.head->hypothesis;
       const WordsRange& range = hypo.GetCurrSourceRange();
 
       if (range.GetStartPos() > 0) {
         // extend left
-        extendPhrase.Prepend(m_potHypoColl[0][range.GetStartPos()-1].second);
+        outputPhrase.Prepend(m_potHypoColl[0][range.GetStartPos()-1].second);
       }
       if (range.GetEndPos() < size-1) {
         // extend right
-        extendPhrase.Append(m_potHypoColl[range.GetEndPos()+1][size-2-range.GetEndPos()].second);
+        outputPhrase.Append(m_potHypoColl[range.GetEndPos()+1][size-2-range.GetEndPos()].second);
       }
 
     }
@@ -613,7 +613,7 @@ void ChartManager::OutputNBestList(OutputCollector *collector,
       const WordsRange& range = hypo.GetCurrSourceRange();
       out << " ||| " << range.GetStartPos() << " " << range.GetEndPos();
 
-      if(staticData.GetExtendSA()) {
+      /*if(staticData.GetExtendSA()) {
         out << " ||| ";
         extendPhrase.RemoveWord(0);
         extendPhrase.RemoveWord(extendPhrase.GetSize() - 1);
@@ -621,7 +621,7 @@ void ChartManager::OutputNBestList(OutputCollector *collector,
       } else {
         out << " ||| ";
         OutputSurface(out, outputPhrase, outputFactorOrder, false);
-      }
+      }*/
     }
 
     out << std::endl;

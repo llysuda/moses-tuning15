@@ -45,7 +45,7 @@ while (<N>) {
     
     #my $potTrans = "";
     #if ($extend) {
-        $potTrans = $items[5];
+    #    $potTrans = $items[5];
     #}
     
     # remove possible space
@@ -66,7 +66,7 @@ while (<N>) {
     #if ($extend) {
     #    print POT "$count ||| $potTrans ||| $features ||| $score\n";
     #}
-    print PAR "$count ||| $potTrans ||| $features ||| $score\n";
+    print PAR "$count ||| $target ||| $features ||| $score\n";
     
     $lcount++;
 }
