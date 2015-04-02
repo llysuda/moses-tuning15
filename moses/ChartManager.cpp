@@ -445,8 +445,6 @@ void ChartManager::OutputNBest(OutputCollector *collector) const
   size_t nBestSize = staticData.GetNBestSize();
   size_t size = m_source.GetSize();
 
-  const map<WordsRange, bool> validRanges = staticData.m_rangeMap.find(m_source.GetTranslationId())->second;
-
   if (nBestSize > 0) {
     const size_t translationId = m_source.GetTranslationId();
 
@@ -478,7 +476,7 @@ void ChartManager::OutputNBest(OutputCollector *collector) const
           nBestListAll.insert(nBestListAll.end(), nBestList.begin(), nBestList.end());
         }
       }*/
-
+      const map<WordsRange, bool>& validRanges = staticData.m_rangeMap.find(m_source.GetTranslationId())->second;
       for(size_t width=2; width <= size; ++width) {
         //size_t start = 0;
         for(size_t start=0; start <= size-width; start++) {
