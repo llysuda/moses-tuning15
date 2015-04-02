@@ -476,27 +476,27 @@ void ChartManager::OutputNBest(OutputCollector *collector) const
         }
       }*/
 
-      //for(size_t width=1; width <= size; ++width) {
-      //  size_t start = 0;
+      for(size_t width=2; width <= size; ++width) {
+        size_t start = 0;
         //for(size_t start=0; start <= size-width; start++) {
-      //    size_t end = start+width-1;
+          size_t end = start+width-1;
 
-      //    if (start == end && (start == 0 || start == size-1))
-      //      continue;
-      size_t start = 0, end = size-1;
-      for(size_t mid = start; mid <= end; mid++) {
-        if (mid > 0) {
-            WordsRange range(start, mid);
+          //if (start == end && (start == 0 || start == size-1))
+          //  continue;
+      //size_t start = 0, end = size-1;
+      //for(size_t mid = start; mid <= end; mid++) {
+      //  if (mid > 0) {
+            WordsRange range(start, end);
             std::vector<boost::shared_ptr<ChartKBestExtractor::Derivation> > nBestList;
             CalcNBest(range, nBestSize, nBestList,staticData.GetDistinctNBest());
             nBestListAll.insert(nBestListAll.end(), nBestList.begin(), nBestList.end());
-        }
-        if (mid < end-1) {
-          WordsRange range(mid+1, end-1);
-          std::vector<boost::shared_ptr<ChartKBestExtractor::Derivation> > nBestList;
-          CalcNBest(range, nBestSize, nBestList,staticData.GetDistinctNBest());
-          nBestListAll.insert(nBestListAll.end(), nBestList.begin(), nBestList.end());
-        }
+        //}
+        //if (mid < end-1) {
+        //  WordsRange range(mid+1, end-1);
+        //  std::vector<boost::shared_ptr<ChartKBestExtractor::Derivation> > nBestList;
+        //  CalcNBest(range, nBestSize, nBestList,staticData.GetDistinctNBest());
+        //  nBestListAll.insert(nBestListAll.end(), nBestList.begin(), nBestList.end());
+        //}
       }
       OutputNBestList(collector, nBestListAll, translationId);
 
