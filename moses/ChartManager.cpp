@@ -489,7 +489,7 @@ void ChartManager::OutputNBest(OutputCollector *collector) const
 
           WordsRange range(start, end);
 
-          if (validRanges.find(range) == validRanges.end())
+          if (validRanges.size() > 0 && validRanges.find(range) == validRanges.end())
             continue;
       //size_t start = 0, end = size-1;
       //for(size_t mid = start; mid <= end; mid++) {
