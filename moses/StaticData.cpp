@@ -98,6 +98,22 @@ bool StaticData::LoadDataStatic(Parameter *parameter, const std::string &execPat
   return s_instance.LoadData(parameter);
 }
 
+void StaticData::LoadRanges(const std::string& filePath)
+{
+  InputFileStream inFile(filePath);
+  string line;
+  while(getline(inFile, line)) {
+    line = Trim(line);
+    vector<string> points = Moses::Tokenize(line);
+    size_t sentId = Scan<size_t>(points[0]);
+    size_t start = Scan<size_t>(points[1]);
+    size_t end = Scan<size_t>(points[2]);
+
+    WordsRange range(start,end);
+    m_rangeMap[sentId][range] = true;
+  }
+}
+
 bool StaticData::LoadData(Parameter *parameter)
 {
   ResetUserTime();
@@ -109,6 +125,12 @@ bool StaticData::LoadData(Parameter *parameter)
   m_parameter->SetParameter(m_onlyTunable, "only-tunable", false);
   m_parameter->SetParameter(m_searchAware, "search-aware", false);
   m_parameter->SetParameter(m_extendSA, "extend-sa", false);
+  m_parameter->SetParameter(m_outRanges, "output-ranges", false);
+
+  params = m_parameter->GetParam("ranges");
+  if (params) {
+    LoadRanges(Scan<std::string>(params->at(0)));
+  }
 
   // verbose level
   m_parameter->SetParameter(m_verboseLevel, "verbose", (size_t) 1);

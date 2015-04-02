@@ -238,9 +238,13 @@ protected:
   bool m_onlyTunable;
   bool m_searchAware;
   bool m_extendSA;
-
+  bool m_outRanges;
   // number of nonterminal labels
 //   size_t m_nonTerminalSize;
+
+public:
+  std::map<size_t, std::map<WordsRange, bool> > m_rangeMap;
+  void LoadRanges(const std::string&);
 
 public:
 
@@ -817,6 +821,10 @@ public:
 
   bool GetExtendSA() const {
     return m_extendSA;
+  }
+
+  bool GetOutputRanges() const {
+    return m_outRanges;
   }
 };
 

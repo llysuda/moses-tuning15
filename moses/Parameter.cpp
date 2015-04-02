@@ -220,6 +220,8 @@ Parameter::Parameter()
   AddParam("only-tunable", "only output tunable features");
   AddParam("search-aware", "for nbest list, output all spans");
   AddParam("extend-sa", "extend span with future translation, only when search-aware is used");
+  AddParam("output-ranges", "output ranges used in the nbest");
+  AddParam("ranges", "rg", "ranges file");
 }
 
 Parameter::~Parameter()

@@ -53,7 +53,7 @@ ChartManager::ChartManager(InputType const& source)
   ,m_parser(source, m_hypoStackColl)
   ,m_translationOptionList(StaticData::Instance().GetRuleLimit(), source)
 {
-  if (StaticData::Instance().GetExtendSA()) {
+  if (StaticData::Instance().GetSearchAware()) {
     size_t size = m_source.GetSize();
     m_potHypoColl.resize(size);
     for(size_t i = 0; i < size; i++) {
@@ -426,12 +426,12 @@ void ChartManager::OutputBest(OutputCollector *collector) const
   }
 }
 
-void ChartManager::CalcRangesRecursive(const ChartHypothesis* hypo, vector<const WordsRange*>& ranges) const
+void ChartManager::CalcRangesRecursive(const ChartHypothesis* hypo, map<const WordsRange*, bool>& ranges) const
 {
   if (hypo == NULL)
     return;
 
-  ranges.push_back(&(hypo->GetCurrSourceRange()));
+  ranges[&(hypo->GetCurrSourceRange())] = true;
   size_t size = hypo->GetPrevHypos().size();
   for (size_t i = 0; i < size; i++) {
     const ChartHypothesis* prev = hypo->GetPrevHypo(i);
@@ -444,6 +444,9 @@ void ChartManager::OutputNBest(OutputCollector *collector) const
   const StaticData &staticData = StaticData::Instance();
   size_t nBestSize = staticData.GetNBestSize();
   size_t size = m_source.GetSize();
+
+  const map<WordsRange, bool> validRanges = staticData.m_rangeMap.find(m_source.GetTranslationId())->second;
+
   if (nBestSize > 0) {
     const size_t translationId = m_source.GetTranslationId();
 
@@ -477,16 +480,21 @@ void ChartManager::OutputNBest(OutputCollector *collector) const
       }*/
 
       for(size_t width=2; width <= size; ++width) {
-        size_t start = 0;
-        //for(size_t start=0; start <= size-width; start++) {
+        //size_t start = 0;
+        for(size_t start=0; start <= size-width; start++) {
           size_t end = start+width-1;
 
-          //if (start == end && (start == 0 || start == size-1))
-          //  continue;
+          if (start == end && (start == 0 || start == size-1))
+            continue;
+
+          WordsRange range(start, end);
+
+          if (validRanges.find(range) == validRanges.end())
+            continue;
       //size_t start = 0, end = size-1;
       //for(size_t mid = start; mid <= end; mid++) {
       //  if (mid > 0) {
-            WordsRange range(start, end);
+
             std::vector<boost::shared_ptr<ChartKBestExtractor::Derivation> > nBestList;
             CalcNBest(range, nBestSize, nBestList,staticData.GetDistinctNBest());
             nBestListAll.insert(nBestListAll.end(), nBestList.begin(), nBestList.end());
@@ -496,7 +504,7 @@ void ChartManager::OutputNBest(OutputCollector *collector) const
         //  std::vector<boost::shared_ptr<ChartKBestExtractor::Derivation> > nBestList;
         //  CalcNBest(range, nBestSize, nBestList,staticData.GetDistinctNBest());
         //  nBestListAll.insert(nBestListAll.end(), nBestList.begin(), nBestList.end());
-        //}
+        }
       }
       OutputNBestList(collector, nBestListAll, translationId);
 
@@ -622,6 +630,18 @@ void ChartManager::OutputNBestList(OutputCollector *collector,
         out << " ||| ";
         OutputSurface(out, outputPhrase, outputFactorOrder, false);
       }*/
+    }
+
+    if (staticData.GetOutputRanges()) {
+      const ChartHypothesis &hypo = derivation.edge.head->hypothesis;
+      map<const WordsRange*, bool> ranges;
+      CalcRangesRecursive(&hypo, ranges);
+      out << " |||";
+      for(map<const WordsRange*, bool>::const_iterator ri = ranges.begin();
+          ri != ranges.end(); ++ri) {
+        const WordsRange& r = *(ri->first);
+        out << " " << r.GetStartPos() << " " << r.GetEndPos();
+      }
     }
 
     out << std::endl;
