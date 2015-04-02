@@ -426,12 +426,12 @@ void ChartManager::OutputBest(OutputCollector *collector) const
   }
 }
 
-void ChartManager::CalcRangesRecursive(const ChartHypothesis* hypo, map<const WordsRange*, bool>& ranges) const
+void ChartManager::CalcRangesRecursive(const ChartHypothesis* hypo, vector<const WordsRange*>& ranges) const
 {
   if (hypo == NULL)
     return;
 
-  ranges[&(hypo->GetCurrSourceRange())] = true;
+  ranges.push_back(&(hypo->GetCurrSourceRange()));
   size_t size = hypo->GetPrevHypos().size();
   for (size_t i = 0; i < size; i++) {
     const ChartHypothesis* prev = hypo->GetPrevHypo(i);
@@ -634,12 +634,12 @@ void ChartManager::OutputNBestList(OutputCollector *collector,
 
     if (staticData.GetOutputRanges()) {
       const ChartHypothesis &hypo = derivation.edge.head->hypothesis;
-      map<const WordsRange*, bool> ranges;
+      vector<const WordsRange*> ranges;
       CalcRangesRecursive(&hypo, ranges);
       out << " |||";
-      for(map<const WordsRange*, bool>::const_iterator ri = ranges.begin();
+      for(vector<const WordsRange*>::const_iterator ri = ranges.begin();
           ri != ranges.end(); ++ri) {
-        const WordsRange& r = *(ri->first);
+        const WordsRange& r = **ri;
         out << " " << r.GetStartPos() << " " << r.GetEndPos();
       }
     }
