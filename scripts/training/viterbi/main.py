@@ -10,6 +10,8 @@ import argparse
 import logging
 import random
 import os.path
+import sys
+import cPickle
 
 import numpy
 import theano
@@ -187,7 +189,10 @@ if __name__ == '__main__':
     
     model = "model"
     if os.path.isfile(model):
-        bm.Load(model)
+        logging.info("load existing model from " + model)
+        print >> sys.stderr, bm.Weight(weights)
+        bm = cPickle.load(open(model,'rb'))
+        print >> sys.stderr, bm.Weight(weights)
     #weights = [list(x) for x in zip(*weights)]
     
     best_score = 0
@@ -236,7 +241,7 @@ if __name__ == '__main__':
             if curr_score > best_score:
                 best_score = curr_score
                 best_w = list(w)
-                bm.Save(model)
+                cPickle.dump(bm, open(model,'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
                 #Output(ofile, w, wnames)
 
             if abs(prev_score - curr_score) < 0.000001:

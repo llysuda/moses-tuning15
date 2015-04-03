@@ -72,7 +72,6 @@ class MLP(object):
         self.L1 = abs(self.W_h).sum() + abs(self.W_out).sum()
         self.L2 = (self.W_h ** 2).sum() + (self.W_h ** 2).sum()
 
-
 # In[64]:
 
 class LinearLayer(object):
@@ -91,39 +90,39 @@ class BlenderModel(object):
         
         rng = numpy.random.RandomState(1234)
         # first layer blender
-        blender = Blender(rng, input, shape)
+        self.blender = Blender(rng, input, shape)
         # second layer MLP
         n_in = shape[0]
         n_hidden = 100
         n_out = n_in
-        mlp = MLP(rng, blender.output, n_in, n_hidden, n_out)
+        self.mlp = MLP(rng, self.blender.output, n_in, n_hidden, n_out)
         # third layer linear
-        linear = LinearLayer(mlp.output, fvalues)
+        linear = LinearLayer(self.mlp.output, fvalues)
         
         # output
         self.output = linear.output
         # cost function
-        l1 = 0.01
-        l2 = 0
+        l1 = 0
+        l2 = 0.1
         
         reshaped = self.output.reshape((batch_size, 2))
         w = theano.shared(value=numpy.asarray([1.,-1.]))
         delta = T.sum (reshaped * w, axis=1)
         positive_delta = delta * (delta > 0)
-        self.cost = T.mean(positive_delta) + l1 * ( blender.L1 + mlp.L1 ) + l2 * ( blender.L2 + mlp.L2 )
+        self.cost = T.mean(positive_delta) + l1 * ( self.blender.L1 + self.mlp.L1 ) + l2 * ( self.blender.L2 + self.mlp.L2 )
         #params
-        self.params = mlp.params + blender.params
+        self.params = self.mlp.params + self.blender.params
         
         # gradient
         gparams = T.grad(self.cost, self.params)
         # updates
-        self.learning_rate = 0.1
+        self.learning_rate = 0.01
         updates = []
         for param, gparam in zip(self.params, gparams):
             updates.append((param, param-self.learning_rate*gparam))
         # define the function
         self.train = theano.function([input, fvalues], self.cost, updates = updates)
-        self.weight = theano.function([input], mlp.output)
+        self.weight = theano.function([input], self.mlp.output)
         #self.weight = mlp.output
     
     def Train(self, weights, fv):
@@ -137,11 +136,18 @@ class BlenderModel(object):
         
         return cost
     
-    def Load(self, file_path):
-        cPickle.load(open(file_path,'rb'))
-    
-    def Save(self, file_path):
-        cPickle.dump(self.params, open(file_path,'wb'))
+#     def Load(self, file_path):
+#         params = cPickle.load(open(file_path,'rb'))
+#         self.mlp.W_h = params[0]
+#         self.mlp.b_h = params[1]
+#         self.mlp.W_out = params[2]
+#         self.mlp.b_out = params[3]
+#         self.blender.W = params[4]
+#         self.blender.b = params[5]
+#         
+#     
+#     def Save(self, file_path):
+#         cPickle.dump(self.params, open(file_path,'wb'))
     
     def Weight(self, weights):
         input = numpy.asarray(weights, dtype=theano.config.floatX)
