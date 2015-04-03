@@ -9,6 +9,9 @@ Created on Mar 24, 2015
 import argparse
 import logging
 import random
+
+import numpy
+import theano
 #from future.backports.email.policy import default
 
 from scorer import Scorer
@@ -16,6 +19,8 @@ import sfactory as ScorerFactory
 from dataset import DataSet
 import multiprocessing as mp
 from multiprocessing import Pool as ProcessPool
+from blender import BlenderModel
+#from future.backports.email.policy import default
 
 
 def backtrace(i,j):
@@ -145,12 +150,13 @@ if __name__ == '__main__':
     parser.add_argument('--scconfig', help='config for scorer', default="")
     parser.add_argument('--scfile', help='score data file', required=True)
     parser.add_argument('--ffile', help='feature file', required=True)
-    parser.add_argument('--iter', help='iteration', type=int, default=5)
+    parser.add_argument('--iter', help='iteration', type=int, default=100)
     parser.add_argument('-o', '--out', help='output file',default="")
     parser.add_argument('-d', help='number of dense features', type=int)
     parser.add_argument('-n', help='the number of random points', type=int, default=20)
     parser.add_argument('--threads', help='num of threads, no used', type=int)
     parser.add_argument('--ifile', help='weight file')
+    parser.add_argument('--batch', help='number of dense features', type=int, default=10)
 
     args = parser.parse_args()
     
@@ -162,6 +168,7 @@ if __name__ == '__main__':
     iter = args.iter
     ofile = args.out
     N = args.n
+    batch = args.batch
     
     # scorer
     scorerInst = ScorerFactory.GetScorer(sctype, scconfig)
@@ -173,12 +180,17 @@ if __name__ == '__main__':
     # load feature
     wnames, weights = loadWeights(denseFile)
     
+    shape = (len(weights), len(weights[0]))
+    bm = BlenderModel(input_shape=shape, batch_size=batch)
+    
+    #weights = [list(x) for x in zip(*weights)]
+    
     best_score = 0
     best_w = None
     for loop in range(1):
         #logging.info('random init ' + str(loop))
         
-        init_w = InitWeight(args.ifile)
+        init_w = bm.Weight(weights)#InitWeight(args.ifile)
         
         Init_score = data.score(init_w, scorerInst)
         
@@ -192,13 +204,29 @@ if __name__ == '__main__':
             best_w = list(init_w)
             #Output(ofile, w, wnames)
         
-        matrix = [[(-1,0) for j in weights[i]]for i in range(len(weights))]
+        #matrix = [[(-1,0) for j in weights[i]]for i in range(len(weights))]
         
         prev_score = Init_score
         for it in range(1, iter+1):
             logging.info("\t iter " + str(it) + "...")
-            w, curr_score = ViterbiSearch()
-            #curr_score = data.score(w, scorerInst)
+            
+            samples = data.samples()
+            total_cost = 0.0
+            
+            for i in range(0, len(samples), batch):
+                if i+batch > len(samples):
+                    continue
+                one_batch = samples[i:i+batch]
+                
+                fvalues = data.Fvalues(one_batch, scorerInst)
+                
+                cost = bm.Train(weights, fvalues)
+                total_cost += cost
+                
+                #logging.info("batch from index "+ str(i)+"/"+ str(len(samples)) +",  cost= " + str(cost))
+            logging.info("\t\t total cost= " + str(cost))   
+            w = bm.Weight(weights)
+            curr_score = data.score(w, scorerInst)
             logging.info("\t\t BLEU = " + str(curr_score))
             if curr_score > best_score:
                 best_score = curr_score
@@ -211,7 +239,7 @@ if __name__ == '__main__':
             prev_score = curr_score
             
             # clear matrix
-            matrix = [[(-1,0) for j in weights[i]]for i in range(len(weights))]
+            #matrix = [[(-1,0) for j in weights[i]]for i in range(len(weights))]
     logging.info("Best point: "+" ".join([str(x) for x in best_w])+ " => "+ str(best_score))
 
     f = open('weights.txt','w')

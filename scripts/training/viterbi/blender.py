@@ -77,7 +77,7 @@ class MLP(object):
 
 class LinearLayer(object):
     def __init__(self, weights, fvalues):
-        self.output = fvalues * weights
+        self.output = T.dot(fvalues, weights)
 
 
 # In[73]:
@@ -110,7 +110,7 @@ class BlenderModel(object):
         w = theano.shared(value=numpy.asarray([1.,-1.]))
         delta = T.sum (reshaped * w, axis=1)
         positive_delta = delta * (delta > 0)
-        self.cost = T.mean(positive_delta)                     + l1 * ( blender.L1 + mlp.L1 )                     + l2 * ( blender.L2 + mlp.L2 )
+        self.cost = T.mean(positive_delta) + l1 * ( blender.L1 + mlp.L1 ) + l2 * ( blender.L2 + mlp.L2 )
         #params
         self.params = mlp.params + blender.params
         
@@ -123,5 +123,21 @@ class BlenderModel(object):
             updates.append((param, param-self.learning_rate*gparam))
         # define the function
         self.train = theano.function([input, fvalues], self.cost, updates = updates)
-        self.weight = mlp.output
-
+        self.weight = theano.function([input], mlp.output)
+        #self.weight = mlp.output
+    
+    def Train(self, weights, fv):
+        input = numpy.asarray(weights, dtype=theano.config.floatX)
+        fvalues = numpy.asarray(fv, dtype=theano.config.floatX)
+        
+        #print input
+        #print fvalues
+        
+        cost = self.train(input, fvalues)
+        
+        return cost
+    
+    def Weight(self, weights):
+        input = numpy.asarray(weights, dtype=theano.config.floatX)
+        w_new = self.weight(input)
+        return w_new

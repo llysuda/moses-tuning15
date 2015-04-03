@@ -1,3 +1,6 @@
+import random
+from sympy.matrices.dense import randMatrix
+from Crypto.Random.random import shuffle
 
 class DataSet (object):
 
@@ -27,6 +30,41 @@ class DataSet (object):
             stats = [x+y for x,y in zip(stats, self.data[i][best_j][0])]
         
         return scorer.score(stats)
+    
+    def samples(self):
+        ret = set()
+        #random.setstate(1234)
+        keys = self.data.keys()
+        #keys = random.shuffle(keys)
+        for key in keys:
+            size = len(self.data[key])
+            ids = range(size)
+            for iter in range(100):
+                i = random.randint(0, size-1)
+                j = random.randint(0, size-1)
+                if i == j:
+                    continue
+                ret.add((key, i, j))
+        ret = list(ret)
+        random.shuffle(ret)
+        
+        return ret
+            
+    def Fvalues(self, samples, scorer):
+        ret = []
+        for sentId, i, j in samples:
+            fvi = self.data[sentId][i][1]
+            fvj = self.data[sentId][j][1]
+            
+            bleui = scorer.smooth_score(self.data[sentId][i][0])
+            bleuj = scorer.smooth_score(self.data[sentId][j][0])
+            
+            if bleui <= bleuj:
+                ret.append(fvi)
+            ret.append(fvj)
+            if bleui > bleuj:
+                ret.append(fvi)
+        return ret
         
     def load(self, scfiles, ffiles):
         
