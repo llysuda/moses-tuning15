@@ -6,7 +6,7 @@
 import theano
 import theano.tensor as T
 import numpy
-
+import cPickle
 
 # In[62]:
 
@@ -136,6 +136,12 @@ class BlenderModel(object):
         cost = self.train(input, fvalues)
         
         return cost
+    
+    def Load(self, file_path):
+        cPickle.load(open(file_path,'rb'))
+    
+    def Save(self, file_path):
+        cPickle.dump(self.params, open(file_path,'wb'))
     
     def Weight(self, weights):
         input = numpy.asarray(weights, dtype=theano.config.floatX)

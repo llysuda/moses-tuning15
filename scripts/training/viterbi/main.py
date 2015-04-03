@@ -9,6 +9,7 @@ Created on Mar 24, 2015
 import argparse
 import logging
 import random
+import os.path
 
 import numpy
 import theano
@@ -157,6 +158,7 @@ if __name__ == '__main__':
     parser.add_argument('--threads', help='num of threads, no used', type=int)
     parser.add_argument('--ifile', help='weight file')
     parser.add_argument('--batch', help='number of dense features', type=int, default=10)
+    #parser.add_argument('--model', help='weight file')
 
     args = parser.parse_args()
     
@@ -183,6 +185,9 @@ if __name__ == '__main__':
     shape = (len(weights), len(weights[0]))
     bm = BlenderModel(input_shape=shape, batch_size=batch)
     
+    model = "model"
+    if os.path.isfile(model):
+        bm.Load(model)
     #weights = [list(x) for x in zip(*weights)]
     
     best_score = 0
@@ -231,6 +236,7 @@ if __name__ == '__main__':
             if curr_score > best_score:
                 best_score = curr_score
                 best_w = list(w)
+                bm.Save(model)
                 #Output(ofile, w, wnames)
 
             if abs(prev_score - curr_score) < 0.000001:
@@ -245,5 +251,7 @@ if __name__ == '__main__':
     f = open('weights.txt','w')
     f.write(" ".join([str(x) for x in best_w])+"\n")
     f.close()
+    
+    
 
     Output(ofile,best_w,wnames)
