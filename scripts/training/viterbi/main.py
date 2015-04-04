@@ -244,8 +244,8 @@ if __name__ == '__main__':
                 cPickle.dump(bm, open(model,'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
                 #Output(ofile, w, wnames)
 
-            if abs(prev_score - curr_score) < 0.000001:
-                break
+            #if abs(prev_score - curr_score) < 0.000001:
+            #    break
 
             prev_score = curr_score
             

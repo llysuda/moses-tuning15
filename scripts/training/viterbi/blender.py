@@ -99,16 +99,17 @@ class BlenderModel(object):
         # third layer linear
         linear = LinearLayer(self.mlp.output, fvalues)
         
+        #sigmoid = T.tanh(linear.output)
         # output
         self.output = linear.output
         # cost function
-        l1 = 0
-        l2 = 0.001
+        l1 = 0.001
+        l2 = 0
         
         reshaped = self.output.reshape((batch_size, 2))
         w = theano.shared(value=numpy.asarray([1.,-1.]))
         delta = T.sum (reshaped * w, axis=1)
-        positive_delta = delta * (delta > 0)
+        positive_delta = delta * (delta > 0) + 1
         self.cost = T.mean(positive_delta) + l1 * ( self.blender.L1 + self.mlp.L1 ) + l2 * ( self.blender.L2 + self.mlp.L2 )
         #params
         self.params = self.mlp.params + self.blender.params
