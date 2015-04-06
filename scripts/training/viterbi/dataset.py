@@ -59,7 +59,10 @@ class DataSet (object):
             bleui = scorer.smooth_score(self.data[sentId][i][0])
             bleuj = scorer.smooth_score(self.data[sentId][j][0])
             
-            if bleui <= bleuj:
+            if bleui == bleuj:
+                continue
+            
+            if bleui < bleuj:
                 ret.append(fvi)
             ret.append(fvj)
             if bleui > bleuj:

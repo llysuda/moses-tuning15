@@ -70,7 +70,7 @@ class MLP(object):
         
         # regularization
         self.L1 = abs(self.W_h).sum() + abs(self.W_out).sum()
-        self.L2 = (self.W_h ** 2).sum() + (self.W_h ** 2).sum()
+        self.L2 = (self.W_h ** 2).sum() + (self.W_out ** 2).sum()
 
 # In[64]:
 
@@ -103,13 +103,13 @@ class BlenderModel(object):
         # output
         self.output = linear.output
         # cost function
-        l1 = 0.001
+        l1 = 0.01
         l2 = 0
         
         reshaped = self.output.reshape((batch_size, 2))
         w = theano.shared(value=numpy.asarray([1.,-1.]))
-        delta = T.sum (reshaped * w, axis=1)
-        positive_delta = delta * (delta > 0) + 1
+        delta = T.dot(reshaped, w) + 1
+        positive_delta = delta * (delta > 0)
         self.cost = T.mean(positive_delta) + l1 * ( self.blender.L1 + self.mlp.L1 ) + l2 * ( self.blender.L2 + self.mlp.L2 )
         #params
         self.params = self.mlp.params + self.blender.params
