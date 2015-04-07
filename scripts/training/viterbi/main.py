@@ -153,7 +153,7 @@ if __name__ == '__main__':
     parser.add_argument('--scconfig', help='config for scorer', default="")
     parser.add_argument('--scfile', help='score data file', required=True)
     parser.add_argument('--ffile', help='feature file', required=True)
-    parser.add_argument('--iter', help='iteration', type=int, default=100)
+    parser.add_argument('--iter', help='iteration', type=int, default=50)
     parser.add_argument('-o', '--out', help='output file',default="")
     parser.add_argument('-d', help='number of dense features', type=int)
     parser.add_argument('-n', help='the number of random points', type=int, default=20)
@@ -212,15 +212,22 @@ if __name__ == '__main__':
         if Init_score > best_score:
             best_score = Init_score
             best_w = list(init_w)
+            cPickle.dump(bm, open(model,'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
             #Output(ofile, w, wnames)
         
         #matrix = [[(-1,0) for j in weights[i]]for i in range(len(weights))]
         
         prev_score = Init_score
+        samples_all = set()
         for it in range(1, iter+1):
             logging.info("\t iter " + str(it) + "...")
             
             samples = data.samples()
+            samples_all |= set(samples)
+            
+            samples = list(samples_all)
+            random.shuffle(samples)
+            
             total_cost = 0.0
             
             for i in range(0, len(samples), batch):

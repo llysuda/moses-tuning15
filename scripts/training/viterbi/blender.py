@@ -103,8 +103,8 @@ class BlenderModel(object):
         # output
         self.output = linear.output
         # cost function
-        l1 = 0.01
-        l2 = 0
+        l1 = 0
+        l2 = 0.01
         
         reshaped = self.output.reshape((batch_size, 2))
         w = theano.shared(value=numpy.asarray([1.,-1.]))
