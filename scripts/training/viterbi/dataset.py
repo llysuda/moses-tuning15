@@ -44,6 +44,8 @@ class DataSet (object):
                 j = random.randint(0, size-1)
                 if i == j:
                     continue
+                if i > j:
+                    i,j=j,i
                 ret.add((key, i, j))
         ret = list(ret)
         random.shuffle(ret)
