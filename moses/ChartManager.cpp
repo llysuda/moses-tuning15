@@ -476,8 +476,10 @@ void ChartManager::OutputNBest(OutputCollector *collector) const
           nBestListAll.insert(nBestListAll.end(), nBestList.begin(), nBestList.end());
         }
       }*/
-      //const map<WordsRange, bool>& validRanges = staticData.m_rangeMap.find(m_source.GetTranslationId())->second;
-      for(size_t width=2; width <= size; ++width) {
+      const map<WordsRange, bool> validRanges;
+      if (staticData.m_rangeMap.size() > 0)
+        validRanges = staticData.m_rangeMap.find(m_source.GetTranslationId())->second;
+      for(size_t width=1; width <= size; ++width) {
         //size_t start = 0;
         for(size_t start=0; start <= size-width; start++) {
           size_t end = start+width-1;
@@ -487,8 +489,8 @@ void ChartManager::OutputNBest(OutputCollector *collector) const
 
           WordsRange range(start, end);
 
-          //if (validRanges.size() > 0 && validRanges.find(range) == validRanges.end())
-          //  continue;
+          if (validRanges.size() > 0 && validRanges.find(range) == validRanges.end())
+            continue;
       //size_t start = 0, end = size-1;
       //for(size_t mid = start; mid <= end; mid++) {
       //  if (mid > 0) {

@@ -104,7 +104,7 @@ class BlenderModel(object):
         self.output = linear.output
         # cost function
         l1 = 0
-        l2 = 0.01
+        l2 = 0.0001
         
         reshaped = self.output.reshape((batch_size, 2))
         w = theano.shared(value=numpy.asarray([1.,-1.]))
@@ -117,7 +117,7 @@ class BlenderModel(object):
         # gradient
         gparams = T.grad(self.cost, self.params)
         # updates
-        self.learning_rate = 0.1
+        self.learning_rate = 0.01
         updates = []
         for param, gparam in zip(self.params, gparams):
             updates.append((param, param-self.learning_rate*gparam))
