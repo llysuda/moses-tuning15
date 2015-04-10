@@ -476,7 +476,7 @@ void ChartManager::OutputNBest(OutputCollector *collector) const
           nBestListAll.insert(nBestListAll.end(), nBestList.begin(), nBestList.end());
         }
       }*/
-      const map<WordsRange, bool> validRanges;
+      map<WordsRange, bool> validRanges;
       if (staticData.m_rangeMap.size() > 0)
         validRanges = staticData.m_rangeMap.find(m_source.GetTranslationId())->second;
       for(size_t width=1; width <= size; ++width) {
