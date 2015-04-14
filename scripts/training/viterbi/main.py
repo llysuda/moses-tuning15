@@ -153,7 +153,7 @@ if __name__ == '__main__':
     parser.add_argument('--scconfig', help='config for scorer', default="")
     parser.add_argument('--scfile', help='score data file', required=True)
     parser.add_argument('--ffile', help='feature file', required=True)
-    parser.add_argument('--iter', help='iteration', type=int, default=50)
+    parser.add_argument('--iter', help='iteration', type=int, default=20)
     parser.add_argument('-o', '--out', help='output file',default="")
     parser.add_argument('-d', help='number of dense features', type=int)
     parser.add_argument('-n', help='the number of random points', type=int, default=20)
