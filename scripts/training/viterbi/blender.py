@@ -125,8 +125,8 @@ class BlenderModel(object):
         l2 = 0.0001
         
         reshaped = self.output.reshape((batch_size, 2))
-        w = theano.shared(value=numpy.asarray([1.,-1.]))
-        delta = T.sum(T.dot(reshaped, w)) + 1
+        #w = theano.shared(value=numpy.asarray([1.,-1.]))
+        delta = reshaped[:,0]-reshaped[:,1]+ 1#T.dot(reshaped, w) + 1
         positive_delta = delta * (delta > 0)
         self.cost = T.mean(positive_delta) + l1 * ( self.blender.L1 + self.mlp.L1 ) + l2 * ( self.blender.L2 + self.mlp.L2 )
         #params
