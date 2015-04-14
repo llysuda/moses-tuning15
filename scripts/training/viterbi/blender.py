@@ -10,6 +10,10 @@ import cPickle
 
 # In[62]:
 
+def SharedZeros(shape):
+    zeros = numpy.zeros(shape, dtype=theano.config.floatX)
+    return theano.shared(zeros, borrow=True)
+
 class Blender (object):
     def __init__(self, rng, input, shape, activation=T.tanh):
         # input: n_dense, n_samples
@@ -21,7 +25,7 @@ class Blender (object):
                 rng.uniform(low=-W_bound,high=W_bound,size=shape),
                 dtype=theano.config.floatX
                 ))
-        self.b = theano.shared(value=numpy.zeros(shape[0], dtype=theano.config.floatX))
+        self.b = theano.shared(value=numpy.zeros((shape[0],), dtype=theano.config.floatX))
         
         # output
         self.output = T.tanh(T.sum(self.input*self.W, axis=1) + self.b)
@@ -32,6 +36,12 @@ class Blender (object):
         # regularization
         self.L1 = abs(self.W).sum()
         self.L2 = (self.W ** 2).sum()
+        
+        #
+        self.Wgrad_hist = SharedZeros(shape)
+        self.bgrad_hist = SharedZeros((shape[0],))
+        
+        self.grad_hist = [self.Wgrad_hist, self.bgrad_hist]
 
 
 # In[63]:
@@ -71,6 +81,14 @@ class MLP(object):
         # regularization
         self.L1 = abs(self.W_h).sum() + abs(self.W_out).sum()
         self.L2 = (self.W_h ** 2).sum() + (self.W_out ** 2).sum()
+        
+        #
+        self.Whgrad_hist = SharedZeros((n_in,n_h))
+        self.bhgrad_hist = SharedZeros((n_h,))
+        self.Wograd_hist = SharedZeros((n_h, n_out))
+        self.bograd_hist = SharedZeros((n_out,))
+        
+        self.grad_hist = [self.Whgrad_hist, self.bhgrad_hist, self.Wograd_hist, self.bograd_hist]
 
 # In[64]:
 
@@ -113,18 +131,33 @@ class BlenderModel(object):
         self.cost = T.mean(positive_delta) + l1 * ( self.blender.L1 + self.mlp.L1 ) + l2 * ( self.blender.L2 + self.mlp.L2 )
         #params
         self.params = self.mlp.params + self.blender.params
+        self.grad_hist = self.mlp.grad_hist + self.blender.grad_hist
         
         # gradient
         gparams = T.grad(self.cost, self.params)
-        # updates
-        self.learning_rate = 0.01
+        # updates, adagrad
+        self.learning_rate = 0.1
         updates = []
-        for param, gparam in zip(self.params, gparams):
-            updates.append((param, param-self.learning_rate*gparam))
+        for param, gparam, grad_hist in zip(self.params, gparams, self.grad_hist):
+            gh = grad_hist + gparam ** 2
+            sq = T.sqrt(gh)
+            sq = T.set_subtensor(sq[sq.nonzero()], self.learning_rate/sq[sq.nonzero()])
+            updates.append((param, param-sq*gparam))
+            updates.append((grad_hist, gh))
+        
         # define the function
         self.train = theano.function([input, fvalues], self.cost, updates = updates)
         self.weight = theano.function([input], self.mlp.output)
         #self.weight = mlp.output
+        
+        # reset grad hist
+        xx = T.scalar()
+        updates_reset = [(gh, T.set_subtensor(gh[:],xx)) for gh in self.grad_hist]
+        self.reset_grad_hist = theano.function([xx],
+                                               updates=updates_reset)
+    
+    def ResetGradHist(self):
+        self.reset_grad_hist(0.)
     
     def Train(self, weights, fv):
         input = numpy.asarray(weights, dtype=theano.config.floatX)

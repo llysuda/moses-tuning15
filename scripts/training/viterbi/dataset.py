@@ -2,6 +2,15 @@ import random
 from sympy.matrices.dense import randMatrix
 from Crypto.Random.random import shuffle
 
+class HopeFearData(object):
+    def __init__(self):
+        self.hopei = 0
+        self.feari = 0
+        self.hopebleu = 0
+        self.fearbleu = 0
+        self.hopestat = []
+        self.fearstat = []
+
 class DataSet (object):
 
     def __init__(self):
@@ -31,41 +40,66 @@ class DataSet (object):
         
         return scorer.score(stats)
     
-    def samples(self):
-        ret = set()
-        #random.setstate(1234)
-        keys = self.data.keys()
-        #keys = random.shuffle(keys)
-        for key in keys:
-            size = len(self.data[key])
-            ids = range(size)
-            for iter in range(100):
-                i = random.randint(0, size-1)
-                j = random.randint(0, size-1)
-                if i == j:
-                    continue
-                if i > j:
-                    i,j=j,i
-                ret.add((key, i, j))
-        ret = list(ret)
-        random.shuffle(ret)
-        
+    def samples(self, scorer):
+        ret = []
+        for i in range(self.size()):
+            bestj = 0
+            worstj = 0
+            bestbleu = 0
+            worstbleu = 1
+            for j in range(len(self.data[i])):
+                stats = self.data[i][j][0]
+                bleu = scorer.smooth_score(stats)
+                if bleu > bestbleu:
+                    bestj = j
+                    bestbleu = bleu
+                if bleu < worstbleu:
+                    worstj = j
+                    worstbleu = bleu
+                
+                #if bestj > worstj:
+                ret.append((i, worstj, bestj))
         return ret
+    
+#     def HopeFear(self, sentId, scorer, bgbleu, weight):
+#         hopei = 0
+#         feari = 0
+#         hopeScore = float('-inf')
+#         fearScore = float('inf')
+#         for i in self.data[sentId]:
+#             model_score = 0#scorer.inner(weight, self.data[sentId][j][1])
+#             #stats = [x+y for x,y in zip(self.data[sentId][j][0], bgbleu)]
+#             stats = self.data[sentId][j][0]
+#             bleu = scorer.smooth_score(stats)
+#             
+#             if bleu > hopeScore:
+#                 hopei = i
+#                 hopeScore = bleu
+#             if bleu < fearScore:
+#                 feari = i
+#                 fearScore = bleu
+#             
+#         hfd = HopeFearData()
+#         hfd.hopei = hopei
+#         hfd.feari = feari
+        
+        #bghopestat = [x+y for x,y in zip(self.data[sentId][hopei][0], bgbleu)]
+        #bgfearstat = [x+y for x,y in zip(self.data[sentId][feari][0], bgbleu)]
+        #hfd.hopebleu = scorer.score(bghopestat)
+        #hfd.fearbleu = scorer.score(bgfearstat)
+        
+        #hfd.hopestat = self.data[sentId][hopei][0]
+        #hfd.fearstat = self.data[sentId][feari][0]
+        
+        return hfd
             
     def Fvalues(self, samples, scorer):
         ret = []
         for sentId, i, j in samples:
             fvi = self.data[sentId][i][1]
             fvj = self.data[sentId][j][1]
-            
-            bleui = scorer.smooth_score(self.data[sentId][i][0])
-            bleuj = scorer.smooth_score(self.data[sentId][j][0])
-            
-            if bleui <= bleuj:
-                ret.append(fvi)
+            ret.append(fvi)
             ret.append(fvj)
-            if bleui > bleuj:
-                ret.append(fvi)
         return ret
         
     def load(self, scfiles, ffiles):

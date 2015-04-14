@@ -19,7 +19,7 @@ import theano
 
 from scorer import Scorer
 import sfactory as ScorerFactory
-from dataset import DataSet
+from dataset import DataSet, HopeFearData
 import multiprocessing as mp
 from multiprocessing import Pool as ProcessPool
 from blender import BlenderModel
@@ -185,7 +185,7 @@ if __name__ == '__main__':
     wnames, weights = loadWeights(denseFile)
     
     shape = (len(weights), len(weights[0]))
-    bm = BlenderModel(input_shape=shape, batch_size=batch)
+    bm = BlenderModel(input_shape=shape, batch_size=1)
     
     model = "model"
     if os.path.isfile(model):
@@ -218,28 +218,20 @@ if __name__ == '__main__':
         #matrix = [[(-1,0) for j in weights[i]]for i in range(len(weights))]
         
         prev_score = Init_score
-        samples_all = set()
+        samples_all = data.samples(scorerInst)
+        background_bleu = [1]*scorerInst.numOfStat()
+        decay = 0.99
+        
         for it in range(1, iter+1):
             logging.info("\t iter " + str(it) + "...")
             
-            samples = data.samples()
-            samples_all |= set(samples)
+            random.shuffle(samples_all)
             
-            samples = list(samples_all)
-            random.shuffle(samples)
-            
-            total_cost = 0.0
-            
-            for i in range(0, len(samples), batch):
-                if i+batch > len(samples):
-                    continue
-                one_batch = samples[i:i+batch]
-                
-                fvalues = data.Fvalues(one_batch, scorerInst)
-                
+            total_cost = 0.
+            for sample in samples_all:
+                fvalues = data.Fvalues([sample], scorerInst)
                 cost = bm.Train(weights, fvalues)
                 total_cost += cost
-                
                 #logging.info("batch from index "+ str(i)+"/"+ str(len(samples)) +",  cost= " + str(cost))
             logging.info("\t\t total cost= " + str(cost))   
             w = bm.Weight(weights)
