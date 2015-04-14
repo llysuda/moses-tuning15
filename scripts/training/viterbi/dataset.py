@@ -10,6 +10,8 @@ class HopeFearData(object):
         self.fearbleu = 0
         self.hopestat = []
         self.fearstat = []
+        self.hopefeatures = []
+        self.fearfeatures = []
 
 class DataSet (object):
 
@@ -61,35 +63,37 @@ class DataSet (object):
                 ret.append((i, worstj, bestj))
         return ret
     
-#     def HopeFear(self, sentId, scorer, bgbleu, weight):
-#         hopei = 0
-#         feari = 0
-#         hopeScore = float('-inf')
-#         fearScore = float('inf')
-#         for i in self.data[sentId]:
-#             model_score = 0#scorer.inner(weight, self.data[sentId][j][1])
-#             #stats = [x+y for x,y in zip(self.data[sentId][j][0], bgbleu)]
-#             stats = self.data[sentId][j][0]
-#             bleu = scorer.smooth_score(stats)
-#             
-#             if bleu > hopeScore:
-#                 hopei = i
-#                 hopeScore = bleu
-#             if bleu < fearScore:
-#                 feari = i
-#                 fearScore = bleu
-#             
-#         hfd = HopeFearData()
-#         hfd.hopei = hopei
-#         hfd.feari = feari
+    def HopeFear(self, sentId, weight, scorer, bgbleu):
+        hopei = 0
+        feari = 0
+        hopeScore = float('-inf')
+        fearScore = float('inf')
+        for i in range(len(self.data[sentId])):
+            model_score = scorer.inner(weight, self.data[sentId][i][1])
+            stats = [x+y for x,y in zip(self.data[sentId][i][0], bgbleu)]
+            bleu = scorer.score(stats)
+             
+            if model_score + bleu > hopeScore:
+                hopei = i
+                hopeScore = bleu
+            if model_score - bleu > fearScore:
+                feari = i
+                fearScore = bleu
+             
+        hfd = HopeFearData()
+        hfd.hopei = hopei
+        hfd.feari = feari
         
-        #bghopestat = [x+y for x,y in zip(self.data[sentId][hopei][0], bgbleu)]
-        #bgfearstat = [x+y for x,y in zip(self.data[sentId][feari][0], bgbleu)]
-        #hfd.hopebleu = scorer.score(bghopestat)
-        #hfd.fearbleu = scorer.score(bgfearstat)
+        bghopestat = [x+y for x,y in zip(self.data[sentId][hopei][0], bgbleu)]
+        bgfearstat = [x+y for x,y in zip(self.data[sentId][feari][0], bgbleu)]
+        hfd.hopebleu = scorer.score(bghopestat)
+        hfd.fearbleu = scorer.score(bgfearstat)
         
-        #hfd.hopestat = self.data[sentId][hopei][0]
-        #hfd.fearstat = self.data[sentId][feari][0]
+        hfd.hopestat = self.data[sentId][hopei][0]
+        hfd.fearstat = self.data[sentId][feari][0]
+        
+        hfd.hopefeatures = self.data[sentId][hopei][1]
+        hfd.fearfeatures = self.data[sentId][feari][1]
         
         return hfd
             

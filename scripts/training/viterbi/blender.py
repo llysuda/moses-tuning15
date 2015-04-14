@@ -100,9 +100,10 @@ class LinearLayer(object):
 # In[73]:
 
 class BlenderModel(object):
-    def __init__(self, input_shape, batch_size):
-        input = T.matrix()
+    def __init__(self, input, input_shape, batch_size):
+        input = theano.shared(numpy.asarray(input, dtype=theano.config.floatX))
         fvalues = T.matrix()
+        dbleu = T.vector()
         
         shape=input_shape
         
@@ -121,13 +122,13 @@ class BlenderModel(object):
         # output
         self.output = linear.output
         # cost function
-        l1 = 0
-        l2 = 0.0001
+        l1 = 0.0001
+        l2 = 0
         
         reshaped = self.output.reshape((batch_size, 2))
         #w = theano.shared(value=numpy.asarray([1.,-1.]))
-        delta = reshaped[:,0]-reshaped[:,1]+ 1#T.dot(reshaped, w) + 1
-        positive_delta = delta * (delta > 0)
+        delta = reshaped[:,0]-reshaped[:,1] + dbleu#T.dot(reshaped, w) + 1
+        positive_delta = delta * (delta>0)
         self.cost = T.mean(positive_delta) + l1 * ( self.blender.L1 + self.mlp.L1 ) + l2 * ( self.blender.L2 + self.mlp.L2 )
         #params
         self.params = self.mlp.params + self.blender.params
@@ -146,8 +147,8 @@ class BlenderModel(object):
             updates.append((grad_hist, gh))
         
         # define the function
-        self.train = theano.function([input, fvalues], self.cost, updates = updates)
-        self.weight = theano.function([input], self.mlp.output)
+        self.train = theano.function([fvalues, dbleu], self.cost, updates = updates)
+        self.weight = theano.function([], self.mlp.output)
         #self.weight = mlp.output
         
         # reset grad hist
@@ -159,31 +160,17 @@ class BlenderModel(object):
     def ResetGradHist(self):
         self.reset_grad_hist(0.)
     
-    def Train(self, weights, fv):
-        input = numpy.asarray(weights, dtype=theano.config.floatX)
+    def Train(self, fv, dbleu):
+        #input = numpy.asarray(weights, dtype=theano.config.floatX)
         fvalues = numpy.asarray(fv, dtype=theano.config.floatX)
+        dbleu = numpy.asarray(dbleu, dtype=theano.config.floatX)
         
-        #print input
-        #print fvalues
-        
-        cost = self.train(input, fvalues)
+        cost = self.train(fvalues, dbleu)
         
         return cost
     
-#     def Load(self, file_path):
-#         params = cPickle.load(open(file_path,'rb'))
-#         self.mlp.W_h = params[0]
-#         self.mlp.b_h = params[1]
-#         self.mlp.W_out = params[2]
-#         self.mlp.b_out = params[3]
-#         self.blender.W = params[4]
-#         self.blender.b = params[5]
-#         
-#     
-#     def Save(self, file_path):
-#         cPickle.dump(self.params, open(file_path,'wb'))
     
-    def Weight(self, weights):
-        input = numpy.asarray(weights, dtype=theano.config.floatX)
-        w_new = self.weight(input)
+    def Weight(self):
+        #input = numpy.asarray(weights, dtype=theano.config.floatX)
+        w_new = self.weight()
         return w_new

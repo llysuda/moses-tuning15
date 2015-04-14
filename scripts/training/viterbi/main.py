@@ -185,14 +185,14 @@ if __name__ == '__main__':
     wnames, weights = loadWeights(denseFile)
     
     shape = (len(weights), len(weights[0]))
-    bm = BlenderModel(input_shape=shape, batch_size=1)
+    bm = BlenderModel(weights, input_shape=shape, batch_size=1)
     
     model = "model"
     if os.path.isfile(model):
         logging.info("load existing model from " + model)
-        print >> sys.stderr, bm.Weight(weights)
+        print >> sys.stderr, bm.Weight()
         bm = cPickle.load(open(model,'rb'))
-        print >> sys.stderr, bm.Weight(weights)
+        print >> sys.stderr, bm.Weight()
     #weights = [list(x) for x in zip(*weights)]
     
     best_score = 0
@@ -200,7 +200,7 @@ if __name__ == '__main__':
     for loop in range(1):
         #logging.info('random init ' + str(loop))
         
-        init_w = bm.Weight(weights)#InitWeight(args.ifile)
+        init_w = bm.Weight()#InitWeight(args.ifile)
         
         Init_score = data.score(init_w, scorerInst)
         
@@ -218,25 +218,45 @@ if __name__ == '__main__':
         #matrix = [[(-1,0) for j in weights[i]]for i in range(len(weights))]
         
         prev_score = Init_score
-        samples_all = data.samples(scorerInst)
+        #samples_all = data.samples(scorerInst)
         background_bleu = [1]*scorerInst.numOfStat()
         decay = 0.99
         
+        keys = data.data.keys()
+        
         for it in range(1, iter+1):
             logging.info("\t iter " + str(it) + "...")
-            
-            random.shuffle(samples_all)
-            
             total_cost = 0.
-            for sample in samples_all:
-                fvalues = data.Fvalues([sample], scorerInst)
-                cost = bm.Train(weights, fvalues)
-                total_cost += cost
+            random.shuffle(keys)
+            for sentid in keys:
+                hfdata = data.HopeFear(sentid, w, scorerInst, background_bleu)
+                
+                if hfdata.hopebleu > hfdata.fearbleu:
+                    #updata
+                    loss = hfdata.hopebleu - hfdata.fearbleu
+                    df = [x-y for x,y in zip(hfdata.hopefeatures, hfdata.fearfeatures)]
+                    delta = scorerInst.inner(w, df)
+                    
+                    if loss > delta:
+                        fvalues = [hfdata.fearfeatures, hfdata.fearfeatures]
+                        dbleu = [loss]
+                        cost = bm.Train(fvalues, dbleu)
+                        total_cost += cost
+                        w = bm.Weight()
+                
+#             random.shuffle(samples_all)
+#             
+#             total_cost = 0.
+#             for sample in samples_all:
+#                 fvalues, dbleus = data.Fvalues([sample], scorerInst)
+#                 cost = bm.Train(fvalues, dbleus)
+#                 total_cost += cost
                 #logging.info("batch from index "+ str(i)+"/"+ str(len(samples)) +",  cost= " + str(cost))
             logging.info("\t\t total cost= " + str(cost))   
-            w = bm.Weight(weights)
+            #w = bm.Weight(weights)
             curr_score = data.score(w, scorerInst)
             logging.info("\t\t BLEU = " + str(curr_score))
+            logging.info("\t\t weight = " + ' '.join([str(wi) for wi in w]))
             if curr_score > best_score:
                 best_score = curr_score
                 best_w = list(w)
