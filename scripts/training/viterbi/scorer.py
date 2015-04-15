@@ -23,6 +23,9 @@ class Scorer(object):
     def score(self, stat):
         pass
     
+    def calc_bg_score(self, stats, bg):
+        pass
+    
     def inner(self, list1, list2):
         assert(len(list1) == len(list2))
         

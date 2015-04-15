@@ -42,41 +42,35 @@ class DataSet (object):
         
         return scorer.score(stats)
     
-    def samples(self, scorer):
-        ret = []
-        for i in range(self.size()):
-            bestj = 0
-            worstj = 0
-            bestbleu = 0
-            worstbleu = 1
-            for j in range(len(self.data[i])):
-                stats = self.data[i][j][0]
-                bleu = scorer.smooth_score(stats)
-                if bleu > bestbleu:
-                    bestj = j
-                    bestbleu = bleu
-                if bleu < worstbleu:
-                    worstj = j
-                    worstbleu = bleu
-                
+    def samples(self, sentid, scorer):
+        ret = set()
+        length = len(self.data[sentid])
+        for iter in range(10):
+            i = random.randint(0,length-1)
+            j = random.randint(0,length-1)  
                 #if bestj > worstj:
-                ret.append((i, worstj, bestj))
+            if i == j:
+                continue
+            if i > j:
+                i,j = j,i
+            ret.add((sentid, i, j))
         return ret
     
-    def HopeFear(self, sentId, weight, scorer, bgbleu):
+    def HopeFear(self, sentId, weight, scorer, bg):
         hopei = 0
         feari = 0
         hopeScore = float('-inf')
         fearScore = float('inf')
         for i in range(len(self.data[sentId])):
             model_score = scorer.inner(weight, self.data[sentId][i][1])
-            stats = [x+y for x,y in zip(self.data[sentId][i][0], bgbleu)]
-            bleu = scorer.score(stats)
+            stats = self.data[sentId][i][0]
+            #bleu = scorer.calc_bg_score(stats, bg)
+            bleu = scorer.smooth_score(stats)
              
-            if model_score + bleu > hopeScore:
+            if bleu > hopeScore:
                 hopei = i
                 hopeScore = bleu
-            if model_score - bleu > fearScore:
+            if bleu < fearScore:
                 feari = i
                 fearScore = bleu
              
@@ -84,13 +78,12 @@ class DataSet (object):
         hfd.hopei = hopei
         hfd.feari = feari
         
-        bghopestat = [x+y for x,y in zip(self.data[sentId][hopei][0], bgbleu)]
-        bgfearstat = [x+y for x,y in zip(self.data[sentId][feari][0], bgbleu)]
-        hfd.hopebleu = scorer.score(bghopestat)
-        hfd.fearbleu = scorer.score(bgfearstat)
-        
         hfd.hopestat = self.data[sentId][hopei][0]
         hfd.fearstat = self.data[sentId][feari][0]
+        
+        hfd.hopebleu = scorer.smooth_score(hfd.hopestat)
+        hfd.fearbleu = scorer.smooth_score(hfd.fearstat)
+        
         
         hfd.hopefeatures = self.data[sentId][hopei][1]
         hfd.fearfeatures = self.data[sentId][feari][1]
@@ -102,8 +95,19 @@ class DataSet (object):
         for sentId, i, j in samples:
             fvi = self.data[sentId][i][1]
             fvj = self.data[sentId][j][1]
+            
+            bleui = scorer.smooth_score(self.data[sentId][i][0])
+            bleuj = scorer.smooth_score(self.data[sentId][j][0])
+            
+            if bleui == bleuj:
+                continue
+            
+            if bleui > bleuj:
+                ret.append(fvj)
             ret.append(fvi)
-            ret.append(fvj)
+            
+            if bleui < bleuj:
+                ret.append(fvj)
         return ret
         
     def load(self, scfiles, ffiles):

@@ -103,7 +103,6 @@ class BlenderModel(object):
     def __init__(self, input, input_shape, batch_size):
         input = theano.shared(numpy.asarray(input, dtype=theano.config.floatX))
         fvalues = T.matrix()
-        dbleu = T.vector()
         
         shape=input_shape
         
@@ -122,13 +121,13 @@ class BlenderModel(object):
         # output
         self.output = linear.output
         # cost function
-        l1 = 0.0001
-        l2 = 0
+        l1 = 0
+        l2 = 0.0001
         
-        reshaped = self.output.reshape((batch_size, 2))
+        reshaped = self.output.reshape((-1, 2))
         #w = theano.shared(value=numpy.asarray([1.,-1.]))
-        delta = reshaped[:,0]-reshaped[:,1] + dbleu#T.dot(reshaped, w) + 1
-        positive_delta = delta * (delta>0)
+        delta = T.nnet.softmax(reshaped)#T.dot(reshaped, w) + 1
+        positive_delta = -T.log(delta[:,1])
         self.cost = T.mean(positive_delta) + l1 * ( self.blender.L1 + self.mlp.L1 ) + l2 * ( self.blender.L2 + self.mlp.L2 )
         #params
         self.params = self.mlp.params + self.blender.params
@@ -147,7 +146,7 @@ class BlenderModel(object):
             updates.append((grad_hist, gh))
         
         # define the function
-        self.train = theano.function([fvalues, dbleu], self.cost, updates = updates)
+        self.train = theano.function([fvalues], self.cost, updates = updates)
         self.weight = theano.function([], self.mlp.output)
         #self.weight = mlp.output
         
@@ -160,12 +159,12 @@ class BlenderModel(object):
     def ResetGradHist(self):
         self.reset_grad_hist(0.)
     
-    def Train(self, fv, dbleu):
+    def Train(self, fv):
         #input = numpy.asarray(weights, dtype=theano.config.floatX)
         fvalues = numpy.asarray(fv, dtype=theano.config.floatX)
-        dbleu = numpy.asarray(dbleu, dtype=theano.config.floatX)
+        #dbleu = numpy.asarray(dbleu, dtype=theano.config.floatX)
         
-        cost = self.train(fvalues, dbleu)
+        cost = self.train(fvalues)
         
         return cost
     

@@ -227,22 +227,34 @@ if __name__ == '__main__':
         for it in range(1, iter+1):
             logging.info("\t iter " + str(it) + "...")
             total_cost = 0.
+            total_update = 0
             random.shuffle(keys)
+            
+            bm.ResetGradHist()
+            
             for sentid in keys:
-                hfdata = data.HopeFear(sentid, w, scorerInst, background_bleu)
+                #hfdata = data.HopeFear(sentid, w, scorerInst, background_bleu)
+                samples = data.samples(sentid, scorerInst)
+                fvalues = data.Fvalues(samples,scorerInst)
                 
-                if hfdata.hopebleu > hfdata.fearbleu:
-                    #updata
-                    loss = hfdata.hopebleu - hfdata.fearbleu
-                    df = [x-y for x,y in zip(hfdata.hopefeatures, hfdata.fearfeatures)]
-                    delta = scorerInst.inner(w, df)
+                if len(fvalues) == 0:
+                    continue
+#                 if hfdata.hopebleu > hfdata.fearbleu:
+#                     #updata
+#                     loss = hfdata.hopebleu - hfdata.fearbleu
+#                     df = [x-y for x,y in zip(hfdata.hopefeatures, hfdata.fearfeatures)]
+#                     delta = scorerInst.inner(w, df)
+#                     
+#                     if loss > delta:
+                #fvalues = [hfdata.fearfeatures, hfdata.hopefeatures]
+                #dbleu = [loss]
+                cost = bm.Train(fvalues)
+                total_cost += cost
+                w = bm.Weight()
+                        
+                total_update += 1
                     
-                    if loss > delta:
-                        fvalues = [hfdata.fearfeatures, hfdata.fearfeatures]
-                        dbleu = [loss]
-                        cost = bm.Train(fvalues, dbleu)
-                        total_cost += cost
-                        w = bm.Weight()
+                    #background_bleu = [decay*x + y for x,y in zip(background_bleu, hfdata.hopestat)]
                 
 #             random.shuffle(samples_all)
 #             
@@ -252,7 +264,8 @@ if __name__ == '__main__':
 #                 cost = bm.Train(fvalues, dbleus)
 #                 total_cost += cost
                 #logging.info("batch from index "+ str(i)+"/"+ str(len(samples)) +",  cost= " + str(cost))
-            logging.info("\t\t total cost= " + str(cost))   
+            logging.info("\t\t total update= " + str(total_update))
+            logging.info("\t\t total cost= " + str(total_cost))   
             #w = bm.Weight(weights)
             curr_score = data.score(w, scorerInst)
             logging.info("\t\t BLEU = " + str(curr_score))
@@ -262,7 +275,10 @@ if __name__ == '__main__':
                 best_w = list(w)
                 cPickle.dump(bm, open(model,'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
                 #Output(ofile, w, wnames)
-
+            
+            if total_update == 0:
+                break
+            
             #if abs(prev_score - curr_score) < 0.000001:
             #    break
 
