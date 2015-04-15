@@ -126,7 +126,7 @@ class BlenderModel(object):
         
         reshaped = self.output.reshape((-1, 2))
         #w = theano.shared(value=numpy.asarray([1.,-1.]))
-        delta = T.nnet.softmax(reshaped)#T.dot(reshaped, w) + 1
+        delta = T.nnet.softmax(T.nnet.sigmoid(reshaped))#T.dot(reshaped, w) + 1
         positive_delta = -T.log(delta[:,1])
         self.cost = T.mean(positive_delta) + l1 * ( self.blender.L1 + self.mlp.L1 ) + l2 * ( self.blender.L2 + self.mlp.L2 )
         #params
