@@ -74,6 +74,14 @@ TranslationOptionCollection::TranslationOptionCollection(
       m_collection[startPos].push_back( TranslationOptionList() );
     }
   }
+
+  if (StaticData::Instance().GetSearchAware()) {
+      size_t size = m_source.GetSize();
+      m_potHypoColl.resize(size);
+      for(size_t i = 0; i < size; i++) {
+        m_potHypoColl[i].resize(size-i);
+      }
+    }
 }
 
 /** destructor, clears out data structures */
@@ -289,6 +297,7 @@ void TranslationOptionCollection::CalcFutureScore()
 {
   // setup the matrix (ignore lower triangle, set upper triangle to -inf
   size_t size = m_source.GetSize(); // the width of the matrix
+  bool searchAware = StaticData::Instance().GetSearchAware();
 
   for(size_t row=0; row<size; row++) {
     for(size_t col=row; col<size; col++) {
@@ -309,8 +318,12 @@ void TranslationOptionCollection::CalcFutureScore()
       for(iterTransOpt = transOptList.begin() ; iterTransOpt != transOptList.end() ; ++iterTransOpt) {
         const TranslationOption &transOpt = **iterTransOpt;
         float score = transOpt.GetFutureScore();
-        if (score > m_futureScore.GetScore(startPos, endPos))
+        if (score > m_futureScore.GetScore(startPos, endPos)) {
           m_futureScore.SetScore(startPos, endPos, score);
+          if (searchAware) {
+            m_potHypoColl[startPos][endPos-startPos] = make_pair(score, transOpt.GetTargetPhrase());
+          }
+        }
       }
     }
   }
@@ -333,8 +346,14 @@ void TranslationOptionCollection::CalcFutureScore()
         TRACE_ERR( "[" <<startPos<<","<<endPos<<"] <-? ["<<startPos<<","<<joinAt<<"]+["<<joinAt+1<<","<<endPos
           << "] (colstart: "<<colstart<<", diagshift: "<<diagshift<<")"<<endl);
         */
-        if (joinedScore > m_futureScore.GetScore(startPos, endPos))
+        if (joinedScore > m_futureScore.GetScore(startPos, endPos)) {
           m_futureScore.SetScore(startPos, endPos, joinedScore);
+          if (searchAware) {
+            Phrase p = m_potHypoColl[startPos][joinAt-startPos].second;
+            p.Append(m_potHypoColl[joinAt+1][endPos-joinAt-1].second);
+            m_potHypoColl[startPos][endPos-startPos] = make_pair(joinedScore, p);
+          }
+        }
       }
     }
   }

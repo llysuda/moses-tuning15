@@ -286,6 +286,64 @@ void Manager::CalcNBest(size_t count, TrellisPathList &ret,bool onlyDistinct) co
   }
 }
 
+void Manager::CalcNBest(size_t wordsTranslated, size_t count, TrellisPathList &ret,bool onlyDistinct) const
+{
+  if (count <= 0)
+    return;
+
+  const std::vector < HypothesisStack* > &hypoStackColl = m_search->GetHypothesisStacks();
+
+  vector<const Hypothesis*> sortedPureHypo = hypoStackColl[wordsTranslated]->GetSortedList();
+
+  if (sortedPureHypo.size() == 0)
+    return;
+
+  TrellisPathCollection contenders;
+
+  set<Phrase> distinctHyps;
+
+  // add all pure paths
+  vector<const Hypothesis*>::const_iterator iterBestHypo;
+  for (iterBestHypo = sortedPureHypo.begin()
+                      ; iterBestHypo != sortedPureHypo.end()
+       ; ++iterBestHypo) {
+    contenders.Add(new TrellisPath(*iterBestHypo));
+  }
+
+  // factor defines stopping point for distinct n-best list if too many candidates identical
+  size_t nBestFactor = StaticData::Instance().GetNBestFactor();
+  if (nBestFactor < 1) nBestFactor = 1000; // 0 = unlimited
+
+  // MAIN loop
+  for (size_t iteration = 0 ; (onlyDistinct ? distinctHyps.size() : ret.GetSize()) < count && contenders.GetSize() > 0 && (iteration < count * nBestFactor) ; iteration++) {
+    // get next best from list of contenders
+    TrellisPath *path = contenders.pop();
+    UTIL_THROW_IF2(path == NULL, "path is NULL");
+    // create deviations from current best
+    path->CreateDeviantPaths(contenders);
+    if(onlyDistinct) {
+      Phrase tgtPhrase = path->GetSurfacePhrase();
+      if (distinctHyps.insert(tgtPhrase).second) {
+        ret.Add(path);
+      } else {
+        delete path;
+        path = NULL;
+      }
+    } else {
+      ret.Add(path);
+    }
+
+
+    if(onlyDistinct) {
+      const size_t nBestFactor = StaticData::Instance().GetNBestFactor();
+      if (nBestFactor > 0)
+        contenders.Prune(count * nBestFactor);
+    } else {
+      contenders.Prune(count);
+    }
+  }
+}
+
 struct SGNReverseCompare {
   bool operator() (const SearchGraphNode& s1, const SearchGraphNode& s2) const {
     return s1.hypo->GetId() > s2.hypo->GetId();
@@ -1601,6 +1659,16 @@ void Manager::OutputNBest(OutputCollector *collector) const
     if (staticData.IsNBestEnabled()) {
       collector->Write(translationId, m_latticeNBestOut.str());
     }
+  } else if (staticData.GetSearchAware()) {
+    TrellisPathList nBestListAll;
+    ostringstream out;
+    for (size_t i = 1; i <= m_source.GetSize(); i++) {
+      TrellisPathList nBestList;
+      CalcNBest(i, staticData.GetNBestSize(), nBestList,staticData.GetDistinctNBest());
+      OutputNBest(out, nBestList, staticData.GetOutputFactorOrder(), m_source.GetTranslationId(),
+                  staticData.GetReportSegmentation());
+    }
+    collector->Write(m_source.GetTranslationId(), out.str());
   } else {
     TrellisPathList nBestList;
     ostringstream out;
@@ -1623,6 +1691,8 @@ void Manager::OutputNBest(std::ostream& out
   bool includeSegmentation = staticData.NBestIncludesSegmentation();
   bool includeWordAlignment = staticData.PrintAlignmentInfoInNbest();
 
+  bool searchAware = staticData.GetSearchAware();
+
   TrellisPathList::const_iterator iter;
   for (iter = nBestList.begin() ; iter != nBestList.end() ; ++iter) {
     const TrellisPath &path = **iter;
@@ -1634,6 +1704,37 @@ void Manager::OutputNBest(std::ostream& out
       const Hypothesis &edge = *edges[currEdge];
       OutputSurface(out, edge, outputFactorOrder, reportSegmentation, reportAllFactors);
     }
+
+    if (searchAware) {
+      // extend partial translation
+      const Hypothesis &hypo = *edges[0];
+      const WordsBitmap& bitmap = hypo.GetWordsBitmap();
+      if (bitmap.GetFirstGapPos() != NOT_FOUND) {
+        // extend right
+        Phrase p;
+        const size_t notInGap= numeric_limits<size_t>::max();
+        size_t startGap = notInGap;
+        float futureScore = 0.0f;
+        for(size_t currPos = 0 ; currPos < bitmap.GetSize() ; currPos++) {
+          // start of a new gap?
+          if(bitmap.GetValue(currPos) == false && startGap == notInGap) {
+            startGap = currPos;
+          }
+          // end of a gap?
+          else if(bitmap.GetValue(currPos) == true && startGap != notInGap) {
+            p.Append(m_transOptColl->GetPotHypoColl()[startGap][currPos-1 - startGap].second);
+            startGap = notInGap;
+          }
+        }
+        // coverage ending with gap?
+        if (startGap != notInGap) {
+          p.Append(m_transOptColl->GetPotHypoColl()[startGap][bitmap.GetSize()-1 - startGap].second);
+        }
+        out << " " << p;
+      }
+
+    }
+
     out << " |||";
 
     // print scores with feature names
@@ -1678,6 +1779,11 @@ void Manager::OutputNBest(std::ostream& out
     if (StaticData::Instance().IsPathRecoveryEnabled()) {
       out << " ||| ";
       OutputInput(out, edges[0]);
+    }
+
+    if (searchAware) {
+      const Hypothesis &hypo = *edges[0];
+      out << " " << 0 << " " << hypo.GetWordsBitmap().GetNumWordsCovered();
     }
 
     out << endl;

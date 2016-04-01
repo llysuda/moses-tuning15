@@ -72,6 +72,8 @@ protected:
   std::vector<const Phrase*> m_unksrcs;
   InputPathList m_inputPathQueue;
 
+  std::vector<std::vector<std::pair<float, Phrase> > > m_potHypoColl;
+
   TranslationOptionCollection(InputType const& src, size_t maxNoTransOptPerCoverage,
                               float translationOptionThreshold);
 
@@ -125,6 +127,10 @@ public:
   //!List of unknowns (OOVs)
   const std::vector<const Phrase*>& GetUnknownSources() const {
     return m_unksrcs;
+  }
+
+  const std::vector<std::vector<std::pair<float, Phrase> > >& GetPotHypoColl() const {
+    return m_potHypoColl;
   }
 
   //! Create all possible translations from the phrase tables
