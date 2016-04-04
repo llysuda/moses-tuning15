@@ -314,16 +314,22 @@ void TranslationOptionCollection::CalcFutureScore()
     for (size_t endPos = startPos ; endPos < startPos + maxSize ; ++endPos) {
       TranslationOptionList &transOptList = GetTranslationOptionList(startPos, endPos);
 
-      TranslationOptionList::const_iterator iterTransOpt;
+      TranslationOptionList::const_iterator iterTransOpt, bestIter;
+      float bestScore = -numeric_limits<float>::infinity();
       for(iterTransOpt = transOptList.begin() ; iterTransOpt != transOptList.end() ; ++iterTransOpt) {
         const TranslationOption &transOpt = **iterTransOpt;
         float score = transOpt.GetFutureScore();
         if (score > m_futureScore.GetScore(startPos, endPos)) {
           m_futureScore.SetScore(startPos, endPos, score);
           if (searchAware) {
-            m_potHypoColl[startPos][endPos-startPos] = make_pair(score, transOpt.GetTargetPhrase());
+            bestIter = iterTransOpt;
+            bestScore = score;
           }
         }
+      }
+      if (searchAware) {
+        const TranslationOption &transOpt = **bestIter;
+        m_potHypoColl[startPos][endPos-startPos] = make_pair(bestScore, transOpt.GetTargetPhrase());
       }
     }
   }
@@ -339,6 +345,8 @@ void TranslationOptionCollection::CalcFutureScore()
     for(size_t diagshift = 0; diagshift < size-colstart ; diagshift++) {
       size_t startPos = diagshift;
       size_t endPos = colstart+diagshift;
+      size_t bestK = NOT_FOUND;
+      float bestScore = -numeric_limits<float>::infinity();
       for(size_t joinAt = startPos; joinAt < endPos ; joinAt++)  {
         float joinedScore = m_futureScore.GetScore(startPos, joinAt)
                             + m_futureScore.GetScore(joinAt+1, endPos);
@@ -349,11 +357,18 @@ void TranslationOptionCollection::CalcFutureScore()
         if (joinedScore > m_futureScore.GetScore(startPos, endPos)) {
           m_futureScore.SetScore(startPos, endPos, joinedScore);
           if (searchAware) {
-            Phrase p = m_potHypoColl[startPos][joinAt-startPos].second;
-            p.Append(m_potHypoColl[joinAt+1][endPos-joinAt-1].second);
-            m_potHypoColl[startPos][endPos-startPos] = make_pair(joinedScore, p);
+            bestK = joinedScore;
+            bestScore = joinedScore;
+//            Phrase p = m_potHypoColl[startPos][joinAt-startPos].second;
+//            p.Append(m_potHypoColl[joinAt+1][endPos-joinAt-1].second);
+//            m_potHypoColl[startPos][endPos-startPos] = make_pair(joinedScore, p);
           }
         }
+      }
+      if (bestK != NOT_FOUND) {
+        Phrase p = m_potHypoColl[startPos][bestK-startPos].second;
+        p.Append(m_potHypoColl[bestK+1][endPos-bestK-1].second);
+        m_potHypoColl[startPos][endPos-startPos] = make_pair(bestScore, p);
       }
     }
   }
