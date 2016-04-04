@@ -313,7 +313,7 @@ void TranslationOptionCollection::CalcFutureScore()
 
     for (size_t endPos = startPos ; endPos < startPos + maxSize ; ++endPos) {
       TranslationOptionList &transOptList = GetTranslationOptionList(startPos, endPos);
-
+      bool bestExist;
       TranslationOptionList::const_iterator iterTransOpt, bestIter;
       float bestScore = -numeric_limits<float>::infinity();
       for(iterTransOpt = transOptList.begin() ; iterTransOpt != transOptList.end() ; ++iterTransOpt) {
@@ -324,10 +324,11 @@ void TranslationOptionCollection::CalcFutureScore()
           if (searchAware) {
             bestIter = iterTransOpt;
             bestScore = score;
+            bestExist = true;
           }
         }
       }
-      if (searchAware) {
+      if (bestExist && searchAware) {
         const TranslationOption &transOpt = **bestIter;
         m_potHypoColl[startPos][endPos-startPos] = make_pair(bestScore, transOpt.GetTargetPhrase());
       }
@@ -365,7 +366,7 @@ void TranslationOptionCollection::CalcFutureScore()
           }
         }
       }
-      if (bestK != NOT_FOUND) {
+      if (searchAware && bestK != NOT_FOUND) {
         Phrase p = m_potHypoColl[startPos][bestK-startPos].second;
         p.Append(m_potHypoColl[bestK+1][endPos-bestK-1].second);
         m_potHypoColl[startPos][endPos-startPos] = make_pair(bestScore, p);
