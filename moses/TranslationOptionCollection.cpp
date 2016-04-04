@@ -358,11 +358,8 @@ void TranslationOptionCollection::CalcFutureScore()
         if (joinedScore > m_futureScore.GetScore(startPos, endPos)) {
           m_futureScore.SetScore(startPos, endPos, joinedScore);
           if (searchAware) {
-            bestK = joinedScore;
+            bestK = joinAt;
             bestScore = joinedScore;
-//            Phrase p = m_potHypoColl[startPos][joinAt-startPos].second;
-//            p.Append(m_potHypoColl[joinAt+1][endPos-joinAt-1].second);
-//            m_potHypoColl[startPos][endPos-startPos] = make_pair(joinedScore, p);
           }
         }
       }
