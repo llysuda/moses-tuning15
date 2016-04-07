@@ -80,6 +80,7 @@ int main(int argc, char** argv)
   size_t hgPruning = 50; //prune hypergraphs to have this many edges per reference word
   bool strict = false;
   bool search_aware = false;
+  string weightFile = "";
 
   // Command-line processing follows pro.cpp
   po::options_description desc("Allowed options");
@@ -108,6 +109,7 @@ int main(int argc, char** argv)
   ("hg-prune", po::value<size_t>(&hgPruning), "Prune hypergraphs to have this many edges per reference word")
   ("strict", po::value(&strict)->zero_tokens()->default_value(false), "only update when diff < 0")
   ("search_aware", po::value(&strict)->zero_tokens()->default_value(false), "search aware kbmira, only for hypergraph")
+  ("weight,w", po::value<string>(&weightFile), "weight file for each nbest")
   ;
 
   po::options_description cmdline_options;
@@ -244,6 +246,22 @@ int main(int argc, char** argv)
     UTIL_THROW(util::Exception, "Unknown batch mira type: '" << type << "'");
   }
 
+  // init instance weight
+  vector<float> instanceWeights;
+  if(!weightFile.empty()) {
+    ifstream opt(weightFile.c_str());
+    string buffer;
+    if (opt.fail()) {
+      cerr << "could not open weight file: " << weightFile << endl;
+      exit(3);
+    }
+    parameter_t val;
+    while(opt >> val) {
+      instanceWeights.push_back(val);
+    }
+    opt.close();
+  }
+
   // Training loop
   if (!streaming_out)
     cerr << "Initial BLEU = " << decoder->Evaluate(wv.avg()) << endl;
@@ -268,6 +286,11 @@ int main(int argc, char** argv)
         // Loss and update
         ValType diff_score = wv.score(diff);
         ValType loss = delta - diff_score;
+
+        if (instanceWeights.size() > 0) {
+          loss *= instanceWeights[hfd.index];
+        }
+
         if(verbose) {
           cerr << "Updating sent " << sentenceIndex << endl;
           cerr << "Wght: " << wv << endl;

@@ -9,6 +9,8 @@ my $ref = $ARGV[1];
 my $extend = $ARGV[2];
 my $outPrefix = $ARGV[3];
 
+my $sa_weight = $ARGV[4]
+
 # read references
 my @refLines;
 open R, "<", $ref ;
@@ -51,7 +53,8 @@ while (<N>) {
     # remove possible space
     $span =~ s/^\s+//g;
     $span =~ s/\s+$//g;
-    $span =~ s/\s+/ /g;
+	my ($sentlen, $phraseleng) = split /\s+/, $span;
+	$span =~ s/\s+/ /g;
     
     # new sentence
     if ($prevSentId ne $sentId || $prevSpan ne $span) {
@@ -61,6 +64,10 @@ while (<N>) {
         $prevSentId = $sentId;
         $prevSpan = $span;
         print STDOUT "$refLines[$sentId]\n";
+		if ($sa_weight) {
+			my $w = $phraselen/$sentlen;
+			print STDERR "$w\n";	
+		}
     }
     
     #if ($extend) {

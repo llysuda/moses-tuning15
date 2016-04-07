@@ -1783,7 +1783,7 @@ void Manager::OutputNBest(std::ostream& out
 
     if (searchAware) {
       const Hypothesis &hypo = *edges[0];
-      out << " ||| " << 0 << " " << hypo.GetWordsBitmap().GetNumWordsCovered();
+      out << " ||| " << m_source.GetSize() << " " << hypo.GetWordsBitmap().GetNumWordsCovered();
     }
 
     out << endl;

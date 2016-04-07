@@ -673,6 +673,8 @@ void SANbestHopeFearDecoder::HopeFear(
 
   size_t cur_index = trainPar_->cur_id();
 
+  hopeFear->index = cur_index;
+
   // Hope / fear decode
   ValType hope_scale = 1.0;
   size_t hope_index=0, fear_index=0, model_index=0;

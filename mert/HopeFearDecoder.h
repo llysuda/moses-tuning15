@@ -53,6 +53,7 @@ struct HopeFearData {
   ValType fearBleu;
 
   bool hopeFearEqual;
+  size_t index;
 };
 
 //Abstract base class
