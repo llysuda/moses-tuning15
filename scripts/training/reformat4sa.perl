@@ -9,7 +9,7 @@ my $ref = $ARGV[1];
 my $extend = $ARGV[2];
 my $outPrefix = $ARGV[3];
 
-my $sa_weight = $ARGV[4]
+my $sa_weight = $ARGV[4];
 
 # read references
 my @refLines;
@@ -53,7 +53,8 @@ while (<N>) {
     # remove possible space
     $span =~ s/^\s+//g;
     $span =~ s/\s+$//g;
-	my ($sentlen, $phraseleng) = split /\s+/, $span;
+	my @lengthes = split /\s+/, $span;
+	die "error span: $span\n" if $#lengthes < 1;
 	$span =~ s/\s+/ /g;
     
     # new sentence
@@ -65,7 +66,7 @@ while (<N>) {
         $prevSpan = $span;
         print STDOUT "$refLines[$sentId]\n";
 		if ($sa_weight) {
-			my $w = $phraselen/$sentlen;
+			my $w = $lengthes[1]/$lengthes[0];
 			print STDERR "$w\n";	
 		}
     }
