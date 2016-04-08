@@ -1662,7 +1662,11 @@ void Manager::OutputNBest(OutputCollector *collector) const
   } else if (staticData.GetSearchAware()) {
     TrellisPathList nBestListAll;
     ostringstream out;
-    for (size_t i = 1; i <= m_source.GetSize(); i++) {
+    size_t window = staticData.GetSAWindow();
+    size_t start = 1;
+    if (window > 0 && window < m_source.GetSize())
+      start = m_source.GetSize()-window;
+    for (size_t i = start; i <= m_source.GetSize(); i++) {
       TrellisPathList nBestList;
       CalcNBest(i, staticData.GetNBestSize(), nBestList,staticData.GetDistinctNBest());
       OutputNBest(out, nBestList, staticData.GetOutputFactorOrder(), m_source.GetTranslationId(),

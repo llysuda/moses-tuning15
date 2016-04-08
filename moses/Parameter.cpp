@@ -222,6 +222,7 @@ Parameter::Parameter()
   AddParam("extend-sa", "extend span with future translation, only when search-aware is used");
   AddParam("output-ranges", "output ranges used in the nbest");
   AddParam("ranges", "rg", "ranges file");
+  AddParam("sa-window", "wdw", "window for phrase-based search aware");
 }
 
 Parameter::~Parameter()

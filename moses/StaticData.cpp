@@ -127,6 +127,13 @@ bool StaticData::LoadData(Parameter *parameter)
   m_parameter->SetParameter(m_extendSA, "extend-sa", false);
   m_parameter->SetParameter(m_outRanges, "output-ranges", false);
 
+  params = m_parameter->GetParam("sa-window");
+  if (params && params->size()) {
+    m_saWindow = Scan<size_t>(params->at(0));
+  } else {
+    m_saWindow = 0;
+  }
+
   params = m_parameter->GetParam("ranges");
   if (params) {
     LoadRanges(Scan<std::string>(params->at(0)));

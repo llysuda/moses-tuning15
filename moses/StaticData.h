@@ -239,6 +239,7 @@ protected:
   bool m_searchAware;
   bool m_extendSA;
   bool m_outRanges;
+  size_t m_saWindow;
   // number of nonterminal labels
 //   size_t m_nonTerminalSize;
 
@@ -825,6 +826,10 @@ public:
 
   bool GetOutputRanges() const {
     return m_outRanges;
+  }
+
+  size_t GetSAWindow() const {
+    return m_saWindow;
   }
 };
 
