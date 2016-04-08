@@ -45,6 +45,7 @@ class Word;
 class DecodeGraph;
 class PhraseDictionary;
 class InputPath;
+class ScoreComponentCollection;
 
 /** Contains all phrase translations applicable to current input type (a sentence or confusion network).
  * A key insight into efficient decoding is that various input
@@ -72,7 +73,7 @@ protected:
   std::vector<const Phrase*> m_unksrcs;
   InputPathList m_inputPathQueue;
 
-  std::vector<std::vector<std::pair<float, Phrase> > > m_potHypoColl;
+  std::vector<std::vector<std::pair<ScoreComponentCollection, Phrase> > > m_potHypoColl;
 
   TranslationOptionCollection(InputType const& src, size_t maxNoTransOptPerCoverage,
                               float translationOptionThreshold);
@@ -129,7 +130,7 @@ public:
     return m_unksrcs;
   }
 
-  const std::vector<std::vector<std::pair<float, Phrase> > >& GetPotHypoColl() const {
+  const std::vector<std::vector<std::pair<ScoreComponentCollection, Phrase> > >& GetPotHypoColl() const {
     return m_potHypoColl;
   }
 

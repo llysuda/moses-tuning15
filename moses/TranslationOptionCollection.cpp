@@ -315,7 +315,7 @@ void TranslationOptionCollection::CalcFutureScore()
       TranslationOptionList &transOptList = GetTranslationOptionList(startPos, endPos);
       bool bestExist; Phrase bestPhrase;
       TranslationOptionList::const_iterator iterTransOpt;
-      float bestScore = -numeric_limits<float>::infinity();
+      ScoreComponentCollection bestScore;
       for(iterTransOpt = transOptList.begin() ; iterTransOpt != transOptList.end() ; ++iterTransOpt) {
         const TranslationOption &transOpt = **iterTransOpt;
         float score = transOpt.GetFutureScore();
@@ -323,7 +323,7 @@ void TranslationOptionCollection::CalcFutureScore()
           m_futureScore.SetScore(startPos, endPos, score);
           if (searchAware) {
             bestPhrase = transOpt.GetTargetPhrase();
-            bestScore = score;
+            bestScore = transOpt.GetScoreBreakdown();
             bestExist = true;
           }
         }
@@ -346,7 +346,7 @@ void TranslationOptionCollection::CalcFutureScore()
       size_t startPos = diagshift;
       size_t endPos = colstart+diagshift;
       size_t bestK = NOT_FOUND;
-      float bestScore = -numeric_limits<float>::infinity();
+      ScoreComponentCollection bestScore;
       for(size_t joinAt = startPos; joinAt < endPos ; joinAt++)  {
         float joinedScore = m_futureScore.GetScore(startPos, joinAt)
                             + m_futureScore.GetScore(joinAt+1, endPos);
@@ -358,13 +358,14 @@ void TranslationOptionCollection::CalcFutureScore()
           m_futureScore.SetScore(startPos, endPos, joinedScore);
           if (searchAware) {
             bestK = joinAt;
-            bestScore = joinedScore;
           }
         }
       }
       if (searchAware && bestK != NOT_FOUND) {
         Phrase p = m_potHypoColl[startPos][bestK-startPos].second;
         p.Append(m_potHypoColl[bestK+1][endPos-bestK-1].second);
+        bestScore = m_potHypoColl[startPos][bestK-startPos].first;
+        bestScore.PlusEquals(m_potHypoColl[bestK+1][endPos-bestK-1].first);
         m_potHypoColl[startPos][endPos-startPos] = make_pair(bestScore, p);
       }
     }

@@ -526,10 +526,10 @@ if ($___DECODER_FLAGS =~ /(^|\s)-(config|f) /
 }
 
 if ($sa_mira && !$___HG_MIRA) {
-    $___DECODER_FLAGS .= " -search-aware -extend-sa";
-    #if ($extend_sa) {
-    #    $___DECODER_FLAGS .= " -extend-sa";
-    #}
+    $___DECODER_FLAGS .= " -search-aware";
+    if ($extend_sa) {
+        $___DECODER_FLAGS .= " -extend-sa";
+    }
 }
 
 

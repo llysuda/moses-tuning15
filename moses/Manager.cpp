@@ -1696,6 +1696,7 @@ void Manager::OutputNBest(std::ostream& out
   bool includeWordAlignment = staticData.PrintAlignmentInfoInNbest();
 
   bool searchAware = staticData.GetSearchAware();
+  bool extendSA = staticData.GetExtendSA();
 
   TrellisPathList::const_iterator iter;
   for (iter = nBestList.begin() ; iter != nBestList.end() ; ++iter) {
@@ -1709,6 +1710,7 @@ void Manager::OutputNBest(std::ostream& out
       OutputSurface(out, edge, outputFactorOrder, reportSegmentation, reportAllFactors);
     }
 
+    ScoreComponentCollection score = path.GetScoreBreakdown();
     if (searchAware) {
       // extend partial translation
       const Hypothesis &hypo = *edges[0];
@@ -1716,6 +1718,7 @@ void Manager::OutputNBest(std::ostream& out
       if (bitmap.GetFirstGapPos() != NOT_FOUND) {
         // extend right
         Phrase p;
+
         const size_t notInGap= numeric_limits<size_t>::max();
         size_t startGap = notInGap;
         float futureScore = 0.0f;
@@ -1727,12 +1730,16 @@ void Manager::OutputNBest(std::ostream& out
           // end of a gap?
           else if(bitmap.GetValue(currPos) == true && startGap != notInGap) {
             p.Append(m_transOptColl->GetPotHypoColl()[startGap][currPos-1 - startGap].second);
+            if (extendSA)
+              score.PlusEquals(m_transOptColl->GetPotHypoColl()[startGap][currPos-1 - startGap].first);
             startGap = notInGap;
           }
         }
         // coverage ending with gap?
         if (startGap != notInGap) {
           p.Append(m_transOptColl->GetPotHypoColl()[startGap][bitmap.GetSize()-1 - startGap].second);
+          if (extendSA)
+            score.PlusEquals(m_transOptColl->GetPotHypoColl()[startGap][bitmap.GetSize()-1 - startGap].first);
         }
         out << " " << p;
       }
@@ -1742,7 +1749,8 @@ void Manager::OutputNBest(std::ostream& out
     out << " |||";
 
     // print scores with feature names
-    path.GetScoreBreakdown().OutputAllFeatureScores(out );
+    //path.GetScoreBreakdown().OutputAllFeatureScores(out );
+    score.OutputAllFeatureScores(out );
 
     // total
     out << " ||| " << path.GetTotalScore();
